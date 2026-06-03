@@ -16,7 +16,7 @@ import re
 from urllib.parse import quote
 
 import httpx
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 logger = logging.getLogger(__name__)
@@ -145,5 +145,77 @@ def setup_agents_routes() -> APIRouter:
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
+
+    # --- Cockpit Workshop: projects, profiles, launch draft, run detail (Phase A) ---
+    def _with_query(path: str, request: Request) -> str:
+        """Append the inbound query string so faceted panel endpoints (e.g.
+        /runs/history) receive their filters through the proxy."""
+        q = request.url.query
+        return f"{path}?{q}" if q else path
+
+    @router.get("/projects")
+    async def projects():
+        return await _get("/api/projects")
+
+    @router.get("/profiles")
+    async def profiles():
+        return await _get("/api/profiles")
+
+    @router.get("/projects/{slug}/active-runs")
+    async def project_active_runs(slug: str):
+        seg = _safe_segment(slug)
+        if seg is None:
+            return JSONResponse({"error": "invalid project slug"}, status_code=400)
+        return await _get(f"/api/projects/{seg}/active-runs")
+
+    @router.get("/projects/{slug}/kanban")
+    async def project_kanban(slug: str):
+        seg = _safe_segment(slug)
+        if seg is None:
+            return JSONResponse({"error": "invalid project slug"}, status_code=400)
+        return await _get(f"/api/projects/{seg}/kanban")
+
+    @router.post("/brief/draft")
+    async def brief_draft(body: dict):
+        return await _post("/api/brief/draft", body)
+
+    @router.get("/runs/history")
+    async def runs_history(request: Request):
+        return await _get(_with_query("/api/runs/history", request))
+
+    @router.get("/runs/{run_id}/output")
+    async def run_output(run_id: str):
+        seg = _safe_segment(run_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid run_id"}, status_code=400)
+        return await _get(f"/api/runs/{seg}/output")
+
+    @router.get("/runs/{run_id}/artifacts")
+    async def run_artifacts(run_id: str):
+        seg = _safe_segment(run_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid run_id"}, status_code=400)
+        return await _get(f"/api/runs/{seg}/artifacts")
+
+    @router.get("/runs/{run_id}/diff")
+    async def run_diff(run_id: str):
+        seg = _safe_segment(run_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid run_id"}, status_code=400)
+        return await _get(f"/api/runs/{seg}/diff")
+
+    @router.post("/runs/{run_id}/backfill-pr")
+    async def run_backfill_pr(run_id: str):
+        seg = _safe_segment(run_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid run_id"}, status_code=400)
+        return await _post(f"/api/runs/{seg}/backfill-pr", {})
+
+    @router.post("/runs/{run_id}/cancel")
+    async def run_cancel(run_id: str):
+        seg = _safe_segment(run_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid run_id"}, status_code=400)
+        return await _post(f"/api/runs/{seg}/cancel", {})
 
     return router

@@ -22,7 +22,7 @@ import censorModule from './js/censor.js';
 import galleryModule from './js/gallery.js';
 import tasksModule from './js/tasks.js';
 import egressConsentModule from './js/egressConsent.js';
-import agentsHubModule from './js/agentsHub.js';
+import workshopModule from './js/workshop.js';
 import runsKanbanModule from './js/runsKanban.js';
 import calendarModule from './js/calendar.js';
 import notesModule from './js/notes.js';
@@ -878,12 +878,13 @@ function initializeEventListeners() {
     });
   }
 
-  // Agents buttons (rail + sidebar) — open the AIOS workforce hub (native glance
-  // views: roster, org, proposals, brief, inbox). Replaces the old no-op stub.
+  // Agents buttons (rail + sidebar) — open the AIOS Workforce cockpit (Workshop +
+  // Board, project-centric). The old 6-tile glance hub is demoted to a "Classic
+  // views" button inside the cockpit header (agentsHubModule still imported there).
   [el('rail-agents'), el('tool-agents-btn')].filter(Boolean).forEach(btn => {
     btn.addEventListener('click', () => {
-      if (agentsHubModule) {
-        agentsHubModule.isAgentsHubOpen() ? agentsHubModule.closeAgentsHub() : agentsHubModule.openAgentsHub();
+      if (workshopModule) {
+        workshopModule.isCockpitOpen() ? workshopModule.closeCockpit() : workshopModule.openCockpit();
       }
     });
   });
@@ -1042,7 +1043,8 @@ function initializeEventListeners() {
     '/tasks':    () => document.getElementById('tool-tasks-btn')?.click(),
     '/library':  () => sessionModule && sessionModule.openLibrary && sessionModule.openLibrary(),
     '/egress':   () => egressConsentModule && egressConsentModule.openEgressConsent(),
-    '/agents':   () => agentsHubModule && agentsHubModule.openAgentsHub(),
+    '/agents':   () => workshopModule && workshopModule.openCockpit(),
+    '/workshop': () => workshopModule && workshopModule.openCockpit(),
     '/runs':     () => runsKanbanModule && runsKanbanModule.openRunsKanban(),
   };
   const _opener = _routeOpen[urlPath];
