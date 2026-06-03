@@ -23,6 +23,7 @@ import galleryModule from './js/gallery.js';
 import tasksModule from './js/tasks.js';
 import egressConsentModule from './js/egressConsent.js';
 import agentsHubModule from './js/agentsHub.js';
+import runsKanbanModule from './js/runsKanban.js';
 import calendarModule from './js/calendar.js';
 import notesModule from './js/notes.js';
 import adminModule from './js/admin.js';
@@ -1042,6 +1043,7 @@ function initializeEventListeners() {
     '/library':  () => sessionModule && sessionModule.openLibrary && sessionModule.openLibrary(),
     '/egress':   () => egressConsentModule && egressConsentModule.openEgressConsent(),
     '/agents':   () => agentsHubModule && agentsHubModule.openAgentsHub(),
+    '/runs':     () => runsKanbanModule && runsKanbanModule.openRunsKanban(),
   };
   const _opener = _routeOpen[urlPath];
   // Defer the opener — at this point in init, the modules whose handlers

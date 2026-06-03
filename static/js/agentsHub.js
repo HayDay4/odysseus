@@ -9,6 +9,7 @@ import orgModule from './org.js';
 import proposalsModule from './proposals.js';
 import briefModule from './brief.js';
 import inboxModule from './inbox.js';
+import runsKanbanModule from './runsKanban.js';
 
 const TILES = [
   { label: 'Agents Roster & Budgets', open: () => rosterModule.openRoster() },
@@ -16,6 +17,7 @@ const TILES = [
   { label: 'Proposals', open: () => proposalsModule.openProposals() },
   { label: 'Brief / Spawn', open: () => briefModule.openBrief() },
   { label: 'Inbox', open: () => inboxModule.openInbox() },
+  { label: 'Runs (kanban + live terminal)', open: () => runsKanbanModule.openRunsKanban() },
 ];
 
 async function render(body) {
