@@ -26,6 +26,23 @@ const MODE_HELP = {
   ensemble: 'Sonnet + Hermes → Opus · ~$0.10 · ~30s',
 };
 
+// ── Inline SVG icon set (stroke=currentColor) — no emoji, theme-tinted ──────
+const _IC = {
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  play: '<path d="M8 5l11 7-11 7z" fill="currentColor" stroke="none"/>',
+  cancel: '<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>',
+  branch: '<circle cx="6" cy="6" r="2.4"/><circle cx="6" cy="18" r="2.4"/><circle cx="18" cy="7" r="2.4"/><path d="M6 8.4v7.2M18 9.4c0 4.2-5.4 2.4-6 5.6"/>',
+  brain: '<path d="M9 3a3 3 0 0 0-3 3 3 3 0 0 0-1.5 5.6A3 3 0 0 0 6 18a3 3 0 0 0 6 .5V4.5A3 3 0 0 0 9 3z"/><path d="M15 3a3 3 0 0 1 3 3 3 3 0 0 1 1.5 5.6A3 3 0 0 1 18 18a3 3 0 0 1-6 .5"/>',
+  bolt: '<path d="M13 3L5 13h5l-1 8 8-10h-5z" fill="currentColor" stroke="none"/>',
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+};
+function ic(name, cls) {
+  return `<svg class="ck-ic ${cls || ''}" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"
+    aria-hidden="true">${_IC[name] || ''}</svg>`;
+}
+
 const S = {
   open: false,
   escHandler: null,
@@ -121,10 +138,12 @@ function renderDecisions() {
   const el = document.querySelector('#aios-cockpit-modal #ck-decisions');
   if (!el) return;
   const d = S.decisions;
-  el.innerHTML = `
-    <span class="ck-dec ${d.in_review ? 'hot' : ''}">⚠ ${d.in_review} in-review</span>
-    <span class="ck-dec ${d.proposals ? 'hot' : ''}">${d.proposals} proposals</span>
-    <span class="ck-dec ${d.questions ? 'hot' : ''}">${d.questions} questions</span>`;
+  const pill = (n, label, tone) => `<span class="ck-dec ${n ? 'hot ' + tone : ''}">
+    <span class="ck-dec-dot"></span><span class="ck-dec-n">${n}</span> ${label}</span>`;
+  el.innerHTML =
+    pill(d.in_review, 'in&nbsp;review', 'warn') +
+    pill(d.proposals, 'proposals', 'accent') +
+    pill(d.questions, 'questions', 'info');
 }
 
 function renderRail() {
@@ -136,7 +155,7 @@ function renderRail() {
     const sel = p.slug === S.selectedSlug ? 'sel' : '';
     return `<button class="ck-proj ${sel}" data-slug="${esc(p.slug)}">
       <span class="ck-proj-slug">${esc(p.slug)}</span>
-      ${n ? `<span class="ck-badge">● ${n}</span>` : ''}
+      ${n ? `<span class="ck-badge live"><span class="ck-dot"></span>${n}</span>` : ''}
     </button>`;
   }).join('');
   el.querySelectorAll('.ck-proj').forEach((b) =>
@@ -151,13 +170,16 @@ function renderSpawn() {
   const modes = ['quick', 'think', 'ensemble'];
   el.innerHTML = `
     <div class="ck-proj-head">
-      <span class="ck-proj-title">PROJECT: ${esc(proj.slug)}</span>
-      <span class="ck-muted">${esc(proj.category || '')}</span>
+      <div>
+        <div class="ck-eyebrow">${esc(proj.category || 'project')}</div>
+        <h2 class="ck-proj-title">${esc(proj.slug)}</h2>
+      </div>
     </div>
     <div class="ck-launch-paths">
-      <label><input type="radio" name="ck-path" value="direct" checked> Direct launch</label>
-      <label class="ck-disabled" title="Wired in Phase C">
-        <input type="radio" name="ck-path" value="brain" disabled> 🧠 Ask the brain</label>
+      <label class="ck-seg active"><input type="radio" name="ck-path" value="direct" checked>
+        ${ic('bolt')}<span>Direct launch</span></label>
+      <label class="ck-seg ck-disabled" title="Wired in Phase C"><input type="radio" name="ck-path" value="brain" disabled>
+        ${ic('brain')}<span>Ask the brain</span></label>
     </div>
     <textarea id="ck-task" rows="3" placeholder="task / intent…">${esc(S.task)}</textarea>
     <div class="ck-form-row">
@@ -179,7 +201,7 @@ function renderSpawn() {
     </div>
     <div class="ck-actions">
       <button id="ck-draft" class="ck-btn primary" ${S.drafting ? 'disabled' : ''}>
-        ${S.drafting ? 'Drafting…' : 'Draft ▸'}</button>
+        ${S.drafting ? '<span class="ck-spin"></span> Drafting…' : `Draft ${ic('arrow')}`}</button>
       ${S.draftResult ? '<button id="ck-reset" class="ck-btn ghost">Reset</button>' : ''}
     </div>
     <div id="ck-draft-result"></div>`;
@@ -232,8 +254,8 @@ function renderWork() {
       <span class="ck-run-task">${esc((r.task || '').slice(0, 80))}</span>
     </button>`;
   el.innerHTML = `
-    <h4 class="ck-work-h">WORK ${active.length ? `<span class="ck-badge">● ${active.length}</span>` : ''}</h4>
-    ${active.length ? active.map((r) => row(r, true)).join('') : '<p class="ck-muted">No active runs.</p>'}
+    <h4 class="ck-work-h">Work ${active.length ? `<span class="ck-badge live"><span class="ck-dot"></span>${active.length}</span>` : ''}</h4>
+    ${active.length ? active.map((r) => row(r, true)).join('') : '<p class="ck-muted ck-empty">No active runs — draft a task to begin.</p>'}
     ${recent.length ? `<h5 class="ck-work-sub">Recent</h5>${recent.slice(0, 8).map((r) => row(r, false)).join('')}` : ''}`;
   el.querySelectorAll('.ck-run').forEach((b) =>
     b.addEventListener('click', () => selectRun(b.dataset.run)));
@@ -251,9 +273,9 @@ async function renderDetail() {
     <div class="ck-detail-head">
       <code class="ck-run-id">${esc(rid)}</code>
       <span style="flex:1"></span>
-      <button id="ck-follow" class="ck-btn ghost sm">▶ Follow (live)</button>
-      <button id="ck-pr" class="ck-btn ghost sm">PR</button>
-      <button id="ck-cancel" class="ck-btn danger sm">Cancel</button>
+      <button id="ck-follow" class="ck-btn ghost sm">${ic('play')} Follow</button>
+      <button id="ck-pr" class="ck-btn ghost sm">${ic('branch')} PR</button>
+      <button id="ck-cancel" class="ck-btn danger sm">${ic('cancel')} Cancel</button>
     </div>
     <div class="ck-detail-tabs">
       <button class="ck-dtab ${S.detailTab === 'output' ? 'active' : ''}" data-dt="output">Output</button>
@@ -331,7 +353,7 @@ async function doSpawn() {
   S.spawning = false;
   const out = document.querySelector('#aios-cockpit-modal #ck-spawn-result');
   if (res && res.ok) {
-    if (out) out.innerHTML = `✓ spawned <code>${esc(res.run_id || '')}</code>`;
+    if (out) out.innerHTML = `<span class="ck-ok">spawned</span> <code>${esc(res.run_id || '')}</code>`;
     S.task = ''; S.draftResult = null; S.editedPrompt = '';
     await loadRuns(); renderRail(); renderWork();
     setTimeout(() => { renderSpawn(); }, 1200);
@@ -385,8 +407,8 @@ export async function openCockpit() {
         </div>
         <div id="ck-decisions" class="ck-decisions"></div>
         <span style="flex:1"></span>
-        <button class="ck-btn ghost sm" id="ck-classic" title="Roster / Org / Inbox — the old glance views">Classic views</button>
-        <button class="close-btn" id="ck-close">✖</button>
+        <button class="ck-btn ghost sm" id="ck-classic" title="Roster / Org / Inbox — the old glance views">${ic('grid')} Classic views</button>
+        <button class="ck-iconbtn" id="ck-close" title="Close" aria-label="Close">${ic('close')}</button>
       </div>
       <div class="modal-body ck-body">
         <div id="ck-workshop" class="ck-workshop">

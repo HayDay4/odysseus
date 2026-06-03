@@ -4801,108 +4801,249 @@ body.bg-pattern-sparkles {
       animation: modal-enter 0.25s ease-out both;
     }
 
-    /* ── AIOS Workforce cockpit (workshop.js) ──────────────────────────── */
+    /* ── AIOS Workforce cockpit (workshop.js) ──────────────────────────────
+       Refined surface tiers + hierarchy. All colours derive from theme tokens
+       via color-mix so the cockpit adapts to every Odysseus theme. */
+    #aios-cockpit-modal {
+      --ck-accent: var(--accent, var(--green));
+      --ck-ink: var(--fg);
+      --ck-surface:   color-mix(in srgb, var(--fg) 4%,  var(--panel));
+      --ck-surface-2: color-mix(in srgb, var(--fg) 8%,  var(--panel));
+      --ck-hover:     color-mix(in srgb, var(--fg) 7%,  var(--panel));
+      --ck-line:      color-mix(in srgb, var(--border) 45%, transparent);
+      --ck-line-2:    color-mix(in srgb, var(--border) 80%, transparent);
+      --ck-muted:     color-mix(in srgb, var(--fg) 62%, transparent);
+      --ck-faint:     color-mix(in srgb, var(--fg) 42%, transparent);
+      --ck-tint:      color-mix(in srgb, var(--ck-accent) 13%, transparent);
+      --ck-tint-2:    color-mix(in srgb, var(--ck-accent) 22%, transparent);
+      --ck-warn: var(--warn, #f0ad4e);
+      --ck-danger: var(--red, #e06c75);
+    }
     .ck-modal-content {
-      width: min(1400px, 96vw); max-width: none;
-      height: 88vh; max-height: 88vh; overflow: hidden;
+      width: min(1440px, 96vw); max-width: none;
+      height: 90vh; max-height: 90vh; overflow: hidden; padding: 0;
+      background: var(--panel);
     }
-    .ck-head { gap: 12px; }
-    .ck-tabs { display: flex; gap: 4px; }
+    /* The global `.modal-body button { margin-top: 6px }` rule misaligns every
+       button in the cockpit — neutralise it here. */
+    #aios-cockpit-modal .modal-body button { margin-top: 0; }
+
+    .ck-ic { width: 15px; height: 15px; flex: 0 0 auto; }
+    .ck-iconbtn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px; border-radius: 8px; cursor: pointer;
+      background: transparent; border: 1px solid transparent; color: var(--ck-muted);
+    }
+    .ck-iconbtn:hover { background: var(--ck-hover); color: var(--ck-ink); }
+    .ck-spin {
+      width: 13px; height: 13px; border-radius: 50%; display: inline-block;
+      border: 2px solid color-mix(in srgb, var(--panel) 50%, transparent);
+      border-top-color: var(--panel); animation: ck-spin 0.7s linear infinite; vertical-align: -2px;
+    }
+    @keyframes ck-spin { to { transform: rotate(360deg); } }
+
+    /* Header toolbar */
+    .ck-head {
+      gap: 14px; padding: 11px 14px; margin-bottom: 0; cursor: default;
+      border-bottom: 1px solid var(--ck-line); align-items: center;
+    }
+    .ck-tabs { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--ck-surface); }
     .ck-tab {
-      background: transparent; border: 1px solid transparent; color: var(--muted, #999);
-      padding: 5px 14px; border-radius: 7px; cursor: pointer; font-weight: 600; font-size: 13px;
+      background: transparent; border: none; color: var(--ck-muted);
+      padding: 6px 16px; border-radius: 7px; cursor: pointer; font-weight: 600; font-size: 13px;
+      transition: color 0.15s, background 0.15s;
     }
-    .ck-tab.active { background: var(--bg); border-color: var(--border); color: var(--fg, inherit); }
-    .ck-decisions { display: flex; gap: 8px; font-size: 12px; }
-    .ck-dec { opacity: 0.6; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border); }
-    .ck-dec.hot { opacity: 1; color: var(--accent, var(--green)); border-color: var(--accent, var(--green)); }
+    .ck-tab:hover { color: var(--ck-ink); }
+    .ck-tab.active { background: color-mix(in srgb, var(--ck-accent) 16%, var(--panel)); color: var(--ck-ink); }
+    .ck-decisions { display: flex; gap: 7px; font-size: 12px; }
+    .ck-dec {
+      display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px 4px 9px;
+      border-radius: 999px; border: 1px solid var(--ck-line); color: var(--ck-faint);
+      background: var(--ck-surface);
+    }
+    .ck-dec-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.7; }
+    .ck-dec-n { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .ck-dec.hot { color: var(--ck-ink); border-color: var(--ck-line-2); }
+    .ck-dec.hot.accent { color: var(--ck-accent); border-color: color-mix(in srgb, var(--ck-accent) 45%, transparent); background: var(--ck-tint); }
+    .ck-dec.hot.warn { color: var(--ck-warn); border-color: color-mix(in srgb, var(--ck-warn) 45%, transparent); background: color-mix(in srgb, var(--ck-warn) 12%, transparent); }
+    .ck-dec.hot.info { color: var(--ck-ink); }
+
     .ck-body { flex: 1; overflow: hidden; padding: 0; }
     .ck-workshop {
-      display: grid; grid-template-columns: 200px minmax(0, 1.2fr) minmax(0, 1.4fr);
-      gap: 10px; height: 100%;
+      display: grid; grid-template-columns: 224px minmax(0, 1fr) minmax(0, 1.25fr);
+      height: 100%;
     }
     .ck-rail, .ck-center, .ck-detail { overflow-y: auto; height: 100%; }
-    .ck-rail { border-right: 1px solid var(--border); padding-right: 8px; display: flex; flex-direction: column; gap: 3px; }
-    .ck-proj {
-      display: flex; align-items: center; justify-content: space-between; gap: 6px;
-      background: transparent; border: 1px solid transparent; color: inherit; cursor: pointer;
-      padding: 7px 9px; border-radius: 7px; text-align: left; font-size: 13px;
+
+    /* Projects rail */
+    .ck-rail {
+      border-right: 1px solid var(--ck-line); padding: 12px 10px;
+      display: flex; flex-direction: column; gap: 2px; background: var(--ck-surface);
     }
-    .ck-proj:hover { background: var(--bg); }
-    .ck-proj.sel { background: var(--bg); border-color: var(--border); }
+    .ck-proj {
+      position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      background: transparent; border: none; color: var(--ck-muted); cursor: pointer;
+      padding: 9px 11px; border-radius: 9px; text-align: left; font-size: 13px; font-weight: 500;
+      transition: background 0.13s, color 0.13s;
+    }
+    .ck-proj:hover { background: var(--ck-hover); color: var(--ck-ink); }
+    .ck-proj.sel { background: var(--ck-surface-2); color: var(--ck-ink); font-weight: 600; }
+    .ck-proj.sel::before {
+      content: ""; position: absolute; left: 0; top: 22%; bottom: 22%; width: 3px;
+      border-radius: 0 3px 3px 0; background: var(--ck-accent);
+    }
     .ck-proj-slug { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .ck-badge {
-      font-size: 11px; background: var(--accent, var(--green)); color: var(--panel);
-      border-radius: 10px; padding: 0 7px; font-weight: 600;
+      display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700;
+      border-radius: 999px; padding: 2px 8px; font-variant-numeric: tabular-nums;
+      background: var(--ck-tint); color: var(--ck-accent);
     }
-    .ck-center { display: flex; flex-direction: column; gap: 12px; padding: 0 6px; }
-    .ck-proj-head { display: flex; align-items: baseline; gap: 10px; }
-    .ck-proj-title { font-weight: 700; font-size: 14px; }
-    .ck-launch-paths { display: flex; gap: 16px; font-size: 12px; margin: 4px 0; }
-    .ck-launch-paths .ck-disabled { opacity: 0.45; }
+    .ck-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; }
+
+    /* Centre column */
+    .ck-center { display: flex; flex-direction: column; gap: 16px; padding: 18px 20px; }
+    .ck-proj-head { display: flex; align-items: flex-start; justify-content: space-between; }
+    .ck-eyebrow { font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ck-faint); font-weight: 600; }
+    .ck-proj-title { font-size: 20px; font-weight: 700; margin: 2px 0 0; letter-spacing: -0.01em; }
+
+    /* Segmented launch-path control */
+    .ck-launch-paths { display: inline-flex; gap: 3px; padding: 3px; border-radius: 11px; background: var(--ck-surface); align-self: flex-start; }
+    .ck-seg {
+      display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: 8px;
+      font-size: 13px; font-weight: 600; color: var(--ck-muted); cursor: pointer; transition: all 0.13s;
+    }
+    .ck-seg .ck-ic { width: 14px; height: 14px; }
+    .ck-seg input { display: none; }
+    .ck-seg:hover:not(.ck-disabled) { color: var(--ck-ink); }
+    .ck-seg.active { background: color-mix(in srgb, var(--ck-accent) 16%, var(--panel)); color: var(--ck-ink); }
+    .ck-seg.ck-disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Form fields */
     .ck-spawn textarea, .ck-spawn select, #ck-edited {
-      width: 100%; box-sizing: border-box; margin-top: 3px;
-      background: var(--bg); color: inherit; border: 1px solid var(--border); border-radius: 6px;
-      font-family: inherit; font-size: 13px; padding: 6px;
+      width: 100%; box-sizing: border-box; margin-top: 5px;
+      background: var(--ck-surface); color: inherit; border: 1px solid var(--ck-line-2); border-radius: 9px;
+      font-family: inherit; font-size: 13px; padding: 10px 11px; transition: border-color 0.13s, box-shadow 0.13s;
     }
-    #ck-edited, #ck-task { font-family: var(--mono, monospace); }
-    .ck-form-row { display: flex; gap: 12px; align-items: flex-end; margin-top: 6px; }
-    .ck-field { display: flex; flex-direction: column; font-size: 12px; opacity: 0.85; flex: 1; }
-    .ck-field.ck-check { flex-direction: row; align-items: center; gap: 6px; flex: 0 0 auto; }
-    .ck-modes { display: flex; gap: 6px; margin-top: 8px; }
+    .ck-spawn textarea:focus, .ck-spawn select:focus, #ck-edited:focus {
+      outline: none; border-color: var(--ck-accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--ck-accent) 18%, transparent);
+    }
+    #ck-edited, #ck-task { font-family: var(--mono, 'Fira Code', monospace); line-height: 1.5; resize: vertical; }
+    .ck-form-row { display: flex; gap: 16px; align-items: flex-end; }
+    .ck-field { display: flex; flex-direction: column; font-size: 12px; color: var(--ck-muted); flex: 1; gap: 2px; font-weight: 500; }
+    .ck-field.ck-check { flex-direction: row; align-items: center; gap: 7px; flex: 0 0 auto; color: var(--ck-ink); cursor: pointer; }
+    .ck-field.ck-check input { accent-color: var(--ck-accent); }
+
+    /* Mode cards */
+    .ck-modes { display: flex; gap: 9px; }
     .ck-mode {
-      flex: 1; border: 1px solid var(--border); border-radius: 7px; padding: 6px 8px; cursor: pointer;
-      display: flex; flex-direction: column; gap: 2px; font-size: 12px;
+      flex: 1; border: 1px solid var(--ck-line-2); border-radius: 11px; padding: 11px 13px; cursor: pointer;
+      display: flex; flex-direction: column; gap: 3px; font-size: 12px; transition: all 0.13s;
+      background: var(--ck-surface);
     }
-    .ck-mode.active { border-color: var(--accent, var(--green)); background: var(--bg); }
+    .ck-mode:hover { border-color: var(--ck-line-2); background: var(--ck-hover); }
+    .ck-mode.active {
+      border-color: color-mix(in srgb, var(--ck-accent) 60%, transparent); background: var(--ck-tint);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--ck-accent) 40%, transparent) inset;
+    }
     .ck-mode input { display: none; }
-    .ck-mode-name { font-weight: 600; }
-    .ck-mode-hint { opacity: 0.6; font-size: 11px; }
-    .ck-actions { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+    .ck-mode-name { font-weight: 700; font-size: 13px; }
+    .ck-mode.active .ck-mode-name { color: var(--ck-accent); }
+    .ck-mode-hint { color: var(--ck-faint); font-size: 11px; line-height: 1.35; }
+
+    /* Buttons */
+    .ck-actions { display: flex; gap: 9px; align-items: center; }
     .ck-btn {
-      background: var(--bg); border: 1px solid var(--border); color: inherit; cursor: pointer;
-      padding: 6px 14px; border-radius: 7px; font-size: 13px; font-weight: 600;
+      display: inline-flex; align-items: center; gap: 7px;
+      background: var(--ck-surface-2); border: 1px solid var(--ck-line-2); color: inherit; cursor: pointer;
+      padding: 9px 18px; border-radius: 9px; font-size: 13px; font-weight: 600; transition: all 0.13s;
     }
-    .ck-btn.primary { background: var(--accent, var(--green)); color: var(--panel); border-color: transparent; }
-    .ck-btn.danger { color: #e66; border-color: #e66; }
-    .ck-btn.ghost { font-weight: 500; opacity: 0.85; }
-    .ck-btn.sm { padding: 3px 10px; font-size: 12px; }
-    .ck-btn:disabled { opacity: 0.5; cursor: default; }
-    .ck-work-h { margin: 6px 0 4px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
-    .ck-work-sub { margin: 10px 0 4px; font-size: 11px; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.05em; }
+    .ck-btn:hover { background: var(--ck-hover); }
+    .ck-btn.primary {
+      background: var(--ck-accent); color: var(--panel); border-color: transparent;
+      box-shadow: 0 2px 14px color-mix(in srgb, var(--ck-accent) 30%, transparent);
+    }
+    .ck-btn.primary:hover { background: color-mix(in srgb, var(--ck-accent) 88%, white); }
+    .ck-btn.danger { color: var(--ck-danger); border-color: color-mix(in srgb, var(--ck-danger) 50%, transparent); background: transparent; }
+    .ck-btn.danger:hover { background: color-mix(in srgb, var(--ck-danger) 14%, transparent); }
+    .ck-btn.ghost { background: transparent; font-weight: 600; color: var(--ck-muted); }
+    .ck-btn.ghost:hover { background: var(--ck-hover); color: var(--ck-ink); }
+    .ck-btn.sm { padding: 5px 11px; font-size: 12px; border-radius: 8px; }
+    .ck-btn:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
+
+    /* Work list */
+    .ck-work-h { margin: 4px 0 6px; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .ck-work-sub { margin: 14px 0 5px; font-size: 11px; color: var(--ck-faint); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+    .ck-empty { padding: 14px 0; }
     .ck-run {
-      display: flex; align-items: center; gap: 7px; width: 100%; text-align: left;
+      display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
       background: transparent; border: 1px solid transparent; color: inherit; cursor: pointer;
-      padding: 6px 8px; border-radius: 6px; font-size: 12px; margin-bottom: 2px;
+      padding: 9px 11px; border-radius: 9px; font-size: 12px; margin-bottom: 3px; transition: background 0.12s;
     }
-    .ck-run:hover { background: var(--bg); }
-    .ck-run.sel { background: var(--bg); border-color: var(--border); }
-    .ck-run-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); flex: 0 0 auto; }
-    .ck-run-dot.live { background: var(--accent, var(--green)); box-shadow: 0 0 6px var(--accent, var(--green)); }
-    .ck-run-dot.completed { background: #5b9; }
-    .ck-run-dot.failed, .ck-run-dot.cancelled { background: #e66; }
-    .ck-run-id { font-family: var(--mono, monospace); }
-    .ck-run-prof { font-size: 11px; opacity: 0.7; }
-    .ck-run-task { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.8; }
-    .ck-detail { border-left: 1px solid var(--border); padding-left: 10px; display: flex; flex-direction: column; }
-    .ck-detail-empty { padding: 24px; }
-    .ck-detail-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-    .ck-detail-tabs { display: flex; gap: 4px; margin-bottom: 6px; }
+    .ck-run:hover { background: var(--ck-hover); }
+    .ck-run.sel { background: var(--ck-surface-2); border-color: var(--ck-line); }
+    .ck-run-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ck-faint); flex: 0 0 auto; }
+    .ck-run-dot.live { background: var(--ck-accent); box-shadow: 0 0 7px var(--ck-accent); }
+    .ck-run-dot.completed { background: #5bb98c; }
+    .ck-run-dot.failed, .ck-run-dot.cancelled { background: var(--ck-danger); }
+    .ck-run-id { font-family: var(--mono, monospace); color: var(--ck-muted); }
+    .ck-run.sel .ck-run-id { color: var(--ck-ink); }
+    .ck-run-prof {
+      font-size: 10px; padding: 1px 7px; border-radius: 999px; font-weight: 600;
+      background: var(--ck-tint); color: var(--ck-accent);
+    }
+    .ck-run-task { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ck-muted); flex: 1; }
+
+    /* Run detail */
+    .ck-detail { border-left: 1px solid var(--ck-line); padding: 16px 18px; display: flex; flex-direction: column; gap: 0; }
+    .ck-detail-empty { margin: auto; text-align: center; max-width: 240px; color: var(--ck-faint); }
+    .ck-detail-head { display: flex; align-items: center; gap: 7px; margin-bottom: 12px; }
+    .ck-detail-head .ck-run-id { font-size: 13px; color: var(--ck-ink); }
+    .ck-detail-tabs { display: flex; gap: 2px; margin-bottom: 12px; border-bottom: 1px solid var(--ck-line); }
     .ck-dtab {
-      background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--muted, #999);
-      padding: 4px 10px; cursor: pointer; font-size: 13px; font-weight: 600;
+      background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--ck-muted);
+      padding: 7px 14px; cursor: pointer; font-size: 13px; font-weight: 600; margin-bottom: -1px; transition: color 0.13s;
     }
-    .ck-dtab.active { color: inherit; border-bottom-color: var(--accent, var(--green)); }
+    .ck-dtab:hover { color: var(--ck-ink); }
+    .ck-dtab.active { color: var(--ck-accent); border-bottom-color: var(--ck-accent); }
     .ck-detail-body { flex: 1; overflow: auto; }
     .ck-pre {
-      font-family: var(--mono, monospace); font-size: 12px; white-space: pre-wrap; word-break: break-word;
-      background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin: 0;
+      font-family: var(--mono, monospace); font-size: 12px; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
+      background: var(--ck-surface); border: 1px solid var(--ck-line); border-radius: 10px; padding: 13px; margin: 0;
     }
-    .ck-diff-meta { font-size: 12px; margin-bottom: 6px; opacity: 0.85; }
+    .ck-diff-meta { font-size: 12px; margin-bottom: 8px; color: var(--ck-muted); }
+    .ck-diff-meta code { color: var(--ck-accent); }
     .ck-diff { white-space: pre; overflow-x: auto; }
-    .ck-muted { opacity: 0.6; font-size: 12px; }
-    .ck-err, .ck-error { color: #e66; }
+    .ck-muted { color: var(--ck-muted); font-size: 12px; }
+    .ck-ok { color: var(--ck-accent); font-weight: 600; }
+    .ck-err, .ck-error { color: var(--ck-danger); }
     .ck-error pre { white-space: pre-wrap; font-size: 12px; }
+    .ck-board .ck-muted { padding: 24px; }
+
+    /* ── Classic views hub (agentsHub.js) — fixed alignment + polish ─────── */
+    #aios-hub-modal .modal-body button { margin-top: 0; }
+    #aios-hub-modal .aios-modal-content { width: min(560px, 94vw); }
+    .aios-hub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 4px; }
+    .aios-hub-tile {
+      display: flex; align-items: center; gap: 12px; text-align: left; cursor: pointer;
+      padding: 15px 16px; border-radius: 12px;
+      border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+      background: color-mix(in srgb, var(--fg) 4%, var(--panel));
+      color: var(--fg); transition: transform 0.13s, border-color 0.13s, background 0.13s, box-shadow 0.13s;
+    }
+    .aios-hub-tile:hover {
+      transform: translateY(-2px);
+      border-color: color-mix(in srgb, var(--accent, var(--green)) 55%, transparent);
+      background: color-mix(in srgb, var(--accent, var(--green)) 8%, var(--panel));
+      box-shadow: 0 6px 20px color-mix(in srgb, var(--accent, var(--green)) 14%, transparent);
+    }
+    .aios-tile-ic {
+      width: 22px; height: 22px; flex: 0 0 auto;
+      color: var(--accent, var(--green));
+    }
+    .aios-tile-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .aios-tile-label { font-weight: 600; font-size: 14px; line-height: 1.25; }
+    .aios-tile-sub { font-size: 11.5px; color: color-mix(in srgb, var(--fg) 55%, transparent); }
 
     .modal-header {
       display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;
