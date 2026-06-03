@@ -71,6 +71,13 @@ _BUILTIN_SERVERS = {
     "memory":     ("mcp_servers/memory_server.py",     "Built-in: Memory"),
     "rag":        ("mcp_servers/rag_server.py",        "Built-in: RAG"),
     "email":      ("mcp_servers/email_server.py",      "Built-in: Email"),
+    # AIOS delegation bridge (MIGRATION_PLAN §2). Auto-launched here, but
+    # deliberately NOT added to MCPManager.is_builtin(): get_all_openai_schemas()
+    # skips is_builtin Python servers (they use the code-block tool format), so
+    # omitting it exposes the fire-and-poll tools as native function-calling
+    # tools the local model can invoke directly. Cost of omission: no builtin
+    # auto-reconnect on subprocess death — fine for a stateless API proxy.
+    "aios_delegation": ("mcp_servers/aios_delegation_server.py", "Built-in: AIOS Delegation"),
 }
 
 # NPX-based built-in servers (run via npx, not Python)
