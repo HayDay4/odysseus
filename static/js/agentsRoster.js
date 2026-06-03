@@ -3,6 +3,7 @@
  * Source: GET /api/aios/roster → {agents:[...]} (proxied to panel /api/agents/roster).
  */
 import { createAiosModal, aiosGet, esc } from './aiosShell.js';
+import { openCostDrill } from './costDrill.js';
 
 function _row(a) {
   const cost = (a.cost_this_week != null) ? `$${Number(a.cost_this_week).toFixed(2)}` : '—';
@@ -12,7 +13,7 @@ function _row(a) {
   const open = [];
   if (a.open_issues) open.push(`${a.open_issues} issue${a.open_issues > 1 ? 's' : ''}`);
   if (a.inbox_depth) open.push(`${a.inbox_depth} queued`);
-  return `<tr>
+  return `<tr class="aios-row-click" data-agent="${esc(a.name)}" title="View cost breakdown">
     <td>
       <div style="display:flex;align-items:center;gap:8px;">
         <span class="aios-dot ${a.active_now ? 'live' : ''}"></span>
@@ -35,6 +36,7 @@ async function render(body) {
     return;
   }
   body.innerHTML = `
+    <div class="aios-table-hint">Tap an agent to see its cost breakdown by report &amp; task.</div>
     <table class="aios-table">
       <thead><tr>
         <th>Agent</th><th class="num">Runs/wk</th><th class="num">Cost/wk</th>
@@ -42,6 +44,8 @@ async function render(body) {
       </tr></thead>
       <tbody>${agents.map(_row).join('')}</tbody>
     </table>`;
+  body.querySelectorAll('.aios-row-click').forEach((tr) =>
+    tr.addEventListener('click', () => openCostDrill(tr.dataset.agent)));
 }
 
 const modal = createAiosModal({ id: 'aios-roster-modal', title: 'Agents Roster & Budgets', render, pollMs: 5000 });

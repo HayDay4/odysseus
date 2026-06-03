@@ -114,6 +114,12 @@ def setup_agents_routes() -> APIRouter:
     async def runs_recent():
         return await _get("/api/runs/recent")
 
+    # Declared BEFORE /runs/{run_id} so the literal path wins (else run_id="history").
+    @router.get("/runs/history")
+    async def runs_history(request: Request):
+        q = request.url.query
+        return await _get(f"/api/runs/history{'?' + q if q else ''}")
+
     @router.get("/runs/{run_id}")
     async def run_get(run_id: str):
         seg = _safe_segment(run_id)
@@ -147,12 +153,6 @@ def setup_agents_routes() -> APIRouter:
         )
 
     # --- Cockpit Workshop: projects, profiles, launch draft, run detail (Phase A) ---
-    def _with_query(path: str, request: Request) -> str:
-        """Append the inbound query string so faceted panel endpoints (e.g.
-        /runs/history) receive their filters through the proxy."""
-        q = request.url.query
-        return f"{path}?{q}" if q else path
-
     @router.get("/projects")
     async def projects():
         return await _get("/api/projects")
@@ -178,10 +178,6 @@ def setup_agents_routes() -> APIRouter:
     @router.post("/brief/draft")
     async def brief_draft(body: dict):
         return await _post("/api/brief/draft", body)
-
-    @router.get("/runs/history")
-    async def runs_history(request: Request):
-        return await _get(_with_query("/api/runs/history", request))
 
     @router.get("/runs/{run_id}/output")
     async def run_output(run_id: str):

@@ -5066,7 +5066,7 @@ body.bg-pattern-sparkles {
        roster / org / proposals / inbox / runs — cohesive cards, badges,
        tables, markdown, all derived from theme tokens via color-mix. */
     #aios-roster-modal, #aios-org-modal, #aios-proposals-modal,
-    #aios-inbox-modal, #aios-kanban-modal {
+    #aios-inbox-modal, #aios-kanban-modal, #aios-cost-modal {
       --a-accent: var(--accent, var(--green));
       --a-surface:   color-mix(in srgb, var(--fg) 4%,  var(--panel));
       --a-surface-2: color-mix(in srgb, var(--fg) 8%,  var(--panel));
@@ -5080,8 +5080,9 @@ body.bg-pattern-sparkles {
     }
     #aios-proposals-modal .aios-modal-content,
     #aios-roster-modal .aios-modal-content,
-    #aios-inbox-modal .aios-modal-content,
-    #aios-kanban-modal .aios-modal-content { width: min(760px, 95vw); }
+    #aios-inbox-modal .aios-modal-content { width: min(760px, 95vw); }
+    /* Runs needs room for 4 columns + readable cards. */
+    #aios-kanban-modal .aios-modal-content { width: min(1180px, 96vw); height: 80vh; max-height: 80vh; }
     #aios-roster-modal .modal-body button,
     #aios-proposals-modal .modal-body button,
     #aios-inbox-modal .modal-body button,
@@ -5156,6 +5157,8 @@ body.bg-pattern-sparkles {
     }
     .aios-table td { padding: 9px 10px; border-bottom: 1px solid var(--a-line); vertical-align: middle; }
     .aios-table tbody tr:hover { background: var(--a-hover); }
+    .aios-table tbody tr.aios-row-click { cursor: pointer; }
+    .aios-table-hint { font-size: 11px; color: var(--a-faint); margin-bottom: 10px; }
     .aios-table .num { text-align: right; font-variant-numeric: tabular-nums; }
     .aios-sub { font-size: 11px; color: var(--a-faint); margin-top: 1px; }
     .aios-over { color: var(--a-danger); font-weight: 700; }
@@ -5171,8 +5174,11 @@ body.bg-pattern-sparkles {
     .aios-org-desc { font-size: 11px; color: var(--a-faint); margin: 1px 0 0 12px; }
 
     /* Runs kanban */
-    .aios-kgrid { display: flex; gap: 12px; align-items: flex-start; }
-    .aios-kcol { flex: 1; min-width: 0; }
+    .aios-kgrid { display: flex; gap: 14px; align-items: flex-start; }
+    .aios-kcol {
+      flex: 1; min-width: 0; background: var(--a-surface); border: 1px solid var(--a-line);
+      border-radius: 12px; padding: 12px; min-height: 120px;
+    }
     .aios-kcol-h {
       font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
       color: var(--a-faint); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
@@ -5185,6 +5191,51 @@ body.bg-pattern-sparkles {
     .aios-kcard:hover { background: var(--a-hover); border-color: color-mix(in srgb, var(--a-accent) 35%, transparent); }
     .aios-kcard-meta { font-size: 10px; color: var(--a-faint); font-family: var(--mono, monospace); margin-bottom: 3px; }
     .aios-kcard-task { font-size: 12px; color: var(--a-muted); line-height: 1.4; }
+
+    /* ── Cost drill-down (costDrill.js) ──────────────────────────────────── */
+    #aios-cost-modal .aios-modal-content { width: min(680px, 95vw); }
+    #aios-cost-modal .modal-body button { margin-top: 0; height: auto; }
+    .cost-crumbs { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-bottom: 12px; font-size: 12px; }
+    .cost-crumb {
+      background: transparent; border: none; color: var(--a-muted); cursor: pointer; padding: 2px 6px;
+      border-radius: 6px; font-weight: 600; font-size: 12px;
+    }
+    .cost-crumb:hover { background: var(--a-hover); color: var(--a-accent); }
+    .cost-crumb:last-of-type { color: var(--a-accent); }
+    .cost-crumb-sep { color: var(--a-faint); }
+    .cost-head-main {
+      display: flex; align-items: center; gap: 22px; padding: 14px 16px; margin-bottom: 18px;
+      background: var(--a-surface); border: 1px solid var(--a-line-2); border-radius: 12px;
+    }
+    .cost-agent { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+    .cost-head-main > div:first-child { flex: 1; min-width: 0; }
+    .cost-stat { display: flex; flex-direction: column; align-items: flex-end; }
+    .cost-stat-v { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--a-accent); }
+    .cost-stat-l { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--a-faint); }
+    .cost-section { margin-bottom: 20px; }
+    .cost-section-h {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 700;
+      color: var(--a-faint); margin-bottom: 10px;
+    }
+    .cost-bars { display: flex; flex-direction: column; gap: 8px; }
+    .cost-bar {
+      display: grid; grid-template-columns: minmax(120px, 0.9fr) 1.6fr auto; align-items: center; gap: 12px;
+      width: 100%; text-align: left; background: transparent; border: none; color: inherit;
+      padding: 6px 8px; border-radius: 9px; cursor: default;
+    }
+    .cost-bar.drillable { cursor: pointer; }
+    .cost-bar.drillable:hover { background: var(--a-hover); }
+    .cost-bar-label { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; flex-direction: column; }
+    .cost-bar-sub { font-size: 10px; font-weight: 500; color: var(--a-faint); }
+    .cost-bar-track { height: 9px; border-radius: 999px; background: var(--a-surface-2); overflow: hidden; }
+    .cost-bar-fill {
+      display: block; height: 100%; border-radius: 999px;
+      background: linear-gradient(90deg, color-mix(in srgb, var(--a-accent) 55%, transparent), var(--a-accent));
+    }
+    .cost-bar.drillable:hover .cost-bar-fill { background: var(--a-accent); }
+    .cost-bar-val { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--a-accent); text-align: right; min-width: 56px; }
+    .cost-drill-hint { font-size: 11px; color: var(--a-faint); margin-bottom: 8px; }
+    .cost-empty { font-size: 12px; color: var(--a-faint); padding: 6px 8px; }
 
     .modal-header {
       display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;
