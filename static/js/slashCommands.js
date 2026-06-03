@@ -19,6 +19,7 @@ import themeModule from './theme.js';
 import documentModule from './document.js';
 import settingsModule from './settings.js';
 import cookbookModule from './cookbook.js';
+import grillmeModule from './grillme.js';
 import { EVAL_PROMPTS } from './compare/index.js';
 
 // ── Module state ──────────────────────────────────────────────────────
@@ -5377,12 +5378,40 @@ async function _cmdHelp(args, ctx) {
   return true;
 }
 
+// /grill-me — local-model intake front door (GRILLME_PROMPT.md). Bare form (with
+// an optional project slug) starts the interrogation; `/grill-me handoff` ships the
+// model's last reply through the egress gate to the cockpit.
+async function _cmdGrillMe(args, ctx) {
+  const sub = (args[0] || '').toLowerCase();
+  if (sub === 'handoff' || sub === 'produce' || sub === 'ship') {
+    slashReply('Producing the handoff from the last reply — review the egress brief, then approve to send it to the workforce…');
+    grillmeModule.produceHandoff();
+    return true;
+  }
+  const project = args.join(' ').trim();
+  await grillmeModule.startIntake(project);
+  slashReply(
+    `<b>Grill-me intake active.</b> The local model will interrogate you to build a brief` +
+    (project ? ` for <code>${ctx.esc(project)}</code>` : '') +
+    `. Answer its questions; when it has enough, tell it <code>PRODUCE HANDOFF</code>, then run ` +
+    `<code>/grill-me handoff</code> to review the scrubbed brief and ship it to the cockpit.`
+  );
+  return true;
+}
+
 // ── Command registry ──────────────────────────────────────────────
 // Each top-level key is a command group.  Flat commands have a handler
 // directly; grouped commands use `subs`.  `default` is the sub run
 // when the command is invoked bare (e.g. `/chats` -> info).
 
 const COMMANDS = {
+  'grill-me': {
+    alias: ['grill', 'grillme', 'intake'],
+    category: 'Tools',
+    help: 'Local-model intake → handoff brief → egress → cockpit',
+    handler: _cmdGrillMe,
+    usage: '/grill-me [project]  ·  /grill-me handoff',
+  },
   chats: {
     alias: ['chat', 'session', 'sessions', 's'],
     category: 'Chats',

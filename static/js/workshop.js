@@ -64,6 +64,13 @@ const S = {
   spawning: false,
   draftResult: null,            // {ok, output, error, stderr}
   editedPrompt: '',
+  // /grill-me handoff (GRILLME_PROMPT.md): a brief pre-filled from local intake.
+  // When set, the spawn area offers "Evaluate (Opus plan)" instead of a direct
+  // spawn — the grilled brief is reviewed by Opus in plan mode before any code.
+  brief: null,                  // normalized handoff dict (slug/profile/mode/...)
+  briefScrubbed: '',            // egress-approved brief text (the prompt body)
+  briefQueue: [],               // remaining suggested_decomposition items (item 2+)
+  planRunId: null,              // run_id of the Opus plan-mode evaluation run
   decisions: { in_review: 0, proposals: 0, questions: 0 },
 };
 
@@ -228,16 +235,30 @@ function renderDraftResult() {
       <pre>${esc(res.error || res.stderr || 'unknown error')}</pre></div>`;
     return;
   }
+  const brief = S.brief;
+  const queued = brief && S.briefQueue.length
+    ? `<p class="ck-muted" style="margin:4px 0 0;">+${S.briefQueue.length} more task${S.briefQueue.length > 1 ? 's' : ''} queued from this brief — load them after this one spawns.</p>`
+    : '';
+  const label = brief
+    ? 'Grilled brief (egress-approved — edit before evaluating)'
+    : 'Claude prompt (edit before spawn)';
+  const actions = brief
+    ? `<button id="ck-evaluate" class="ck-btn primary" ${S.spawning ? 'disabled' : ''}>
+         ${S.spawning ? 'Starting…' : `Evaluate (Opus plan) ${ic('brain')}`}</button>
+       <button id="ck-spawn" class="ck-btn ghost" ${S.spawning ? 'disabled' : ''}>Spawn directly</button>`
+    : `<button id="ck-spawn" class="ck-btn primary" ${S.spawning ? 'disabled' : ''}>
+         ${S.spawning ? 'Spawning…' : 'Spawn'}</button>`;
   el.innerHTML = `
-    <label class="ck-field">Claude prompt (edit before spawn)
+    ${brief ? '<p class="ck-muted" style="margin:0 0 6px;">Opus reviews this brief in <strong>plan mode</strong> (read-only) before any code is written.</p>' : ''}
+    <label class="ck-field">${label}
       <textarea id="ck-edited" rows="9">${esc(S.editedPrompt)}</textarea></label>
-    <div class="ck-actions">
-      <button id="ck-spawn" class="ck-btn primary" ${S.spawning ? 'disabled' : ''}>
-        ${S.spawning ? 'Spawning…' : 'Spawn'}</button>
-    </div>
+    ${queued}
+    <div class="ck-actions">${actions}</div>
     <div id="ck-spawn-result" class="ck-muted"></div>`;
   el.querySelector('#ck-edited').addEventListener('input', (e) => { S.editedPrompt = e.target.value; });
   el.querySelector('#ck-spawn').addEventListener('click', doSpawn);
+  const ev = el.querySelector('#ck-evaluate');
+  if (ev) ev.addEventListener('click', doEvaluatePlan);
 }
 
 function renderWork() {
@@ -269,6 +290,15 @@ async function renderDetail() {
     return;
   }
   const rid = S.selectedRunId;
+  const isPlanRun = S.planRunId && rid === S.planRunId;
+  const planBar = isPlanRun
+    ? `<div class="ck-plan-bar">
+         <span class="ck-muted">Opus plan-mode review (read-only). Approve to spawn the implementation run.</span>
+         <span style="flex:1"></span>
+         <button id="ck-revise-brief" class="ck-btn ghost sm">Revise brief</button>
+         <button id="ck-approve-plan" class="ck-btn primary sm">${ic('play')} Approve plan → implement</button>
+       </div>`
+    : '';
   el.innerHTML = `
     <div class="ck-detail-head">
       <code class="ck-run-id">${esc(rid)}</code>
@@ -277,6 +307,7 @@ async function renderDetail() {
       <button id="ck-pr" class="ck-btn ghost sm">${ic('branch')} PR</button>
       <button id="ck-cancel" class="ck-btn danger sm">${ic('cancel')} Cancel</button>
     </div>
+    ${planBar}
     <div class="ck-detail-tabs">
       <button class="ck-dtab ${S.detailTab === 'output' ? 'active' : ''}" data-dt="output">Output</button>
       <button class="ck-dtab ${S.detailTab === 'changes' ? 'active' : ''}" data-dt="changes">Changes</button>
@@ -285,6 +316,10 @@ async function renderDetail() {
   el.querySelector('#ck-follow').addEventListener('click', () => openRunTerminal(rid));
   el.querySelector('#ck-pr').addEventListener('click', () => doBackfillPr(rid));
   el.querySelector('#ck-cancel').addEventListener('click', () => doCancel(rid));
+  const approve = el.querySelector('#ck-approve-plan');
+  if (approve) approve.addEventListener('click', doImplement);
+  const revise = el.querySelector('#ck-revise-brief');
+  if (revise) revise.addEventListener('click', () => { S.selectedRunId = null; S.detailTab = 'output'; renderWork(); renderDetail(); renderSpawn(); });
   el.querySelectorAll('.ck-dtab').forEach((b) =>
     b.addEventListener('click', () => { S.detailTab = b.dataset.dt; renderDetail(); }));
   renderDetailBody();
@@ -359,6 +394,88 @@ async function doSpawn() {
     setTimeout(() => { renderSpawn(); }, 1200);
   } else if (out) {
     out.innerHTML = `<span class="ck-err">spawn failed: ${esc((res && (res.error || JSON.stringify(res))) || 'unknown')}</span>`;
+  }
+}
+
+// ── /grill-me handoff: brief → Opus plan-mode evaluation → implement ────────
+// Pre-fill the spawn area from an egress-approved grilled brief. Lands in the
+// post-draft slot (editedPrompt + draftResult) so the drafter is bypassed — the
+// brief is already drafted and scrubbed; re-drafting would paraphrase it.
+export async function openWorkshopWithBrief(brief) {
+  if (!S.open) { await openCockpit(); } else { switchTab('workshop'); }
+  if (!S.open) return;
+  applyBrief(brief || {});
+}
+
+function applyBrief({ parsed, scrubbed } = {}) {
+  parsed = parsed || {};
+  const slug = parsed.project_slug || '';
+  if (slug && S.projects.find((p) => p.slug === slug)) selectProject(slug);
+  if (parsed.suggested_profile && S.profiles.includes(parsed.suggested_profile)) {
+    S.profile = parsed.suggested_profile;
+  }
+  if (['quick', 'think', 'ensemble'].includes(parsed.suggested_mode)) S.mode = parsed.suggested_mode;
+  if (S.mode !== 'quick') S.viaHermes = false;
+  S.task = parsed.title || '';
+  S.editedPrompt = scrubbed || '';
+  S.draftResult = { ok: true, output: '' };   // mark "drafted" so Spawn/Evaluate is live
+  S.brief = parsed;
+  S.briefScrubbed = scrubbed || '';
+  S.briefQueue = Array.isArray(parsed.suggested_decomposition) ? parsed.suggested_decomposition.slice(1) : [];
+  S.planRunId = null;
+  S.selectedRunId = null;
+  renderSpawn(); renderWork(); renderDetail();
+}
+
+const PLAN_EVAL_PREAMBLE =
+  'You are reviewing an implementation brief produced by a local intake model.\n' +
+  'Evaluate it IN PLAN MODE: judge feasibility, surface risks and ambiguities, and produce a\n' +
+  'concrete, ordered implementation plan. DO NOT write or edit any code — planning only.\n\n' +
+  '=== BRIEF ===\n';
+
+async function doEvaluatePlan() {
+  if (S.spawning || !S.selectedSlug || !S.editedPrompt.trim()) return;
+  S.spawning = true; renderDraftResult();
+  const res = await aiosPost('/brief/spawn', {
+    slug: S.selectedSlug,
+    prompt: PLAN_EVAL_PREAMBLE + S.editedPrompt,
+    profile: S.profile || null,
+    permission_mode: 'plan',
+    model: 'opus',
+  });
+  S.spawning = false;
+  const out = document.querySelector('#aios-cockpit-modal #ck-spawn-result');
+  if (res && res.ok) {
+    S.planRunId = res.run_id || null;
+    if (out) out.innerHTML = `<span class="ck-ok">Opus plan run started</span> <code>${esc(res.run_id || '')}</code> — watch it below, then approve to implement.`;
+    await loadRuns(); renderRail(); renderWork();
+    if (S.planRunId) selectRun(S.planRunId);
+  } else if (out) {
+    out.innerHTML = `<span class="ck-err">plan eval failed: ${esc((res && (res.error || JSON.stringify(res))) || 'unknown')}</span>`;
+  }
+}
+
+async function doImplement() {
+  if (!S.selectedSlug || !S.briefScrubbed) return;
+  let planText = '';
+  if (S.planRunId) {
+    const d = await aiosGet(`/runs/${encodeURIComponent(S.planRunId)}/output`);
+    if (d && d.ok) planText = d.last_output || '';
+  }
+  const prompt = S.briefScrubbed +
+    (planText ? '\n\n## Approved implementation plan (from Opus review)\n' + planText : '');
+  const res = await aiosPost('/brief/spawn', {
+    slug: S.selectedSlug, prompt,
+    profile: S.profile || null, drafter_mode: S.mode,
+  });
+  if (res && res.ok) {
+    S.brief = null; S.briefScrubbed = ''; S.planRunId = null;
+    S.draftResult = null; S.editedPrompt = ''; S.task = '';
+    await loadRuns(); renderRail(); renderWork();
+    if (res.run_id) selectRun(res.run_id);
+    renderSpawn();
+  } else {
+    alert('Implementation spawn failed: ' + ((res && (res.error || JSON.stringify(res))) || 'unknown'));
   }
 }
 
@@ -458,4 +575,4 @@ export function closeCockpit() {
 }
 
 export function isCockpitOpen() { return S.open; }
-export default { openCockpit, closeCockpit, isCockpitOpen };
+export default { openCockpit, closeCockpit, isCockpitOpen, openWorkshopWithBrief };

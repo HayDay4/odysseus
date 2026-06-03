@@ -18,9 +18,17 @@ const _G = {
   proposals: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/>',
   inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5 5h14l3 7v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-6z"/>',
   runs: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  grill: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/>',
 };
+// "New brief" starts /grill-me intake. Dynamic import keeps agentsHub off the
+// grillme→workshop→agentsHub static import cycle.
+function _startGrillme() {
+  closeAgentsHub();
+  import('./grillme.js').then((m) => (m.startIntake || m.default.startIntake)('')).catch(() => {});
+}
 // Brief/Spawn was dropped — the cockpit Workshop tab's Direct-launch supersedes it.
 const TILES = [
+  { icon: 'grill', label: 'New brief (/grill-me)', sub: 'local intake → cockpit', open: _startGrillme },
   { icon: 'roster', label: 'Agents Roster', sub: 'budgets & cost drill-down', open: () => rosterModule.openRoster() },
   { icon: 'org', label: 'Org Tree', sub: 'reporting lines', open: () => orgModule.openOrg() },
   { icon: 'proposals', label: 'Proposals', sub: 'Hermes advisories', open: () => proposalsModule.openProposals() },

@@ -69,6 +69,16 @@ def setup_egress_routes() -> APIRouter:
         rec = _read_json(_PENDING_PATH)
         return JSONResponse({"pending": rec})
 
+    @router.get("/decision")
+    async def egress_decision(request_id: str = ""):
+        """Report the last recorded decision. A caller that staged a request polls
+        this for its own `request_id` — the egressConsent.js modal records the
+        decision but fires no callback, so the staging caller learns the outcome
+        here. Returns {decision: <rec>|null, matches: bool}."""
+        rec = _read_json(_DECISION_PATH)
+        matches = bool(rec and request_id and rec.get("request_id") == request_id)
+        return JSONResponse({"decision": rec, "matches": matches})
+
     @router.post("/consent")
     async def egress_consent(body: dict):
         request_id = (body or {}).get("request_id")

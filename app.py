@@ -668,6 +668,11 @@ from routes.egress_routes import setup_egress_routes
 app.include_router(setup_egress_routes())
 logger.info("Egress consent routes initialized")
 
+# /grill-me local-model intake → handoff brief → egress gate (GRILLME_PROMPT.md)
+from routes.grillme_routes import setup_grillme_routes
+app.include_router(setup_grillme_routes())
+logger.info("Grill-me intake routes initialized")
+
 # AIOS workforce proxy (MIGRATION_PLAN §7 — native glance views + ops console)
 from routes.agents_routes import setup_agents_routes
 app.include_router(setup_agents_routes())
