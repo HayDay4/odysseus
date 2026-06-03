@@ -5033,7 +5033,113 @@ body.bg-pattern-sparkles {
     .ck-ok { color: var(--ck-accent); font-weight: 600; }
     .ck-err, .ck-error { color: var(--ck-danger); }
     .ck-error pre { white-space: pre-wrap; font-size: 12px; }
-    .ck-board .ck-muted { padding: 24px; }
+    .ck-board { height: 100%; overflow-y: auto; padding: 16px 18px 28px; display: flex; flex-direction: column; gap: 16px; }
+    .ck-board > .ck-muted { padding: 24px; }
+
+    /* Board toolbar (filter + assignee/delegator selects + new-issue) */
+    .ck-board-bar { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; }
+    .ckb-search {
+      flex: 0 0 280px; max-width: 40%; height: auto; box-sizing: border-box;
+      background: var(--ck-surface); color: inherit; border: 1px solid var(--ck-line-2);
+      border-radius: 9px; font-family: inherit; font-size: 13px; padding: 8px 11px;
+    }
+    .ckb-search:focus { outline: none; border-color: var(--ck-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ck-accent) 18%, transparent); }
+    .ckb-fsel {
+      height: auto; min-height: 36px; background: var(--ck-surface); color: inherit;
+      border: 1px solid var(--ck-line-2); border-radius: 9px; font-family: inherit; font-size: 12px; padding: 6px 9px;
+    }
+    .ckb-fsel:focus { outline: none; border-color: var(--ck-accent); }
+    #aios-cockpit-modal .ck-board-bar button { margin-top: 0; }
+
+    /* New-issue inline form */
+    .ckb-newform { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 11px 12px;
+      background: var(--ck-surface); border: 1px solid var(--ck-line-2); border-radius: 10px; }
+    .ckb-newform input, .ckb-newform select {
+      height: auto; min-height: 34px; background: var(--panel); color: inherit; border: 1px solid var(--ck-line-2);
+      border-radius: 8px; font-family: inherit; font-size: 12px; padding: 6px 9px;
+    }
+    .ckb-newform #ni-title { flex: 1 1 240px; }
+    .ckb-newform #ni-priority { width: 64px; }
+
+    /* Kanban */
+    .ck-kanban { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 11px; align-items: start; flex: 0 0 auto; }
+    .ck-kcol { background: var(--ck-surface); border: 1px solid var(--ck-line); border-radius: 12px; display: flex; flex-direction: column; min-height: 120px; }
+    .ck-kcol-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 8px; border-bottom: 1px solid var(--ck-line); }
+    .ck-kcol-label { font-size: 12px; font-weight: 700; letter-spacing: 0.01em; }
+    .ck-kcol-n { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ck-faint);
+      background: var(--ck-surface-2); border-radius: 999px; padding: 1px 8px; }
+    .ck-kcol-body { padding: 9px; display: flex; flex-direction: column; gap: 8px; max-height: 46vh; overflow-y: auto; }
+    .ckb-col-empty { color: var(--ck-faint); font-size: 12px; text-align: center; padding: 10px 0; margin: 0; }
+
+    /* Issue card */
+    .ckb-card { background: var(--panel); border: 1px solid var(--ck-line-2); border-radius: 10px; transition: border-color 0.13s, box-shadow 0.13s; }
+    .ckb-card:hover { border-color: color-mix(in srgb, var(--ck-accent) 35%, var(--ck-line-2)); }
+    .ckb-card.open { border-color: color-mix(in srgb, var(--ck-accent) 50%, transparent); box-shadow: 0 2px 14px color-mix(in srgb, var(--ck-accent) 12%, transparent); }
+    .ckb-card-head { padding: 9px 10px; cursor: pointer; display: flex; flex-direction: column; gap: 6px; }
+    .ckb-card-top { display: flex; align-items: flex-start; gap: 8px; }
+    .ckb-prio { flex: 0 0 auto; width: 20px; height: 20px; border-radius: 6px; font-size: 11px; font-weight: 700;
+      display: inline-flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; }
+    .ckb-prio.p-hi { background: color-mix(in srgb, var(--ck-danger) 20%, transparent); color: var(--ck-danger); }
+    .ckb-prio.p-mid { background: color-mix(in srgb, var(--ck-warn) 18%, transparent); color: var(--ck-warn); }
+    .ckb-prio.p-lo { background: var(--ck-surface-2); color: var(--ck-faint); }
+    .ckb-card-title { font-size: 12.5px; font-weight: 600; line-height: 1.35; color: var(--ck-ink); word-break: break-word; }
+    .ckb-card-meta { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+    .ckb-chip { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--ck-tint); color: var(--ck-accent); }
+    .ckb-chip.ghost { background: var(--ck-surface-2); color: var(--ck-muted); }
+    .ckb-chip.blocked { background: color-mix(in srgb, var(--ck-danger) 18%, transparent); color: var(--ck-danger); }
+    .ckb-chip.ckb-pr { text-decoration: none; background: color-mix(in srgb, var(--ck-accent) 22%, transparent); color: var(--ck-accent); }
+    .ckb-chip.ckb-pr:hover { background: color-mix(in srgb, var(--ck-accent) 34%, transparent); }
+
+    .ckb-card-body { padding: 4px 11px 11px; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--ck-line); margin-top: 2px; }
+    .ckb-desc { font-size: 12px; color: var(--ck-muted); line-height: 1.45; margin: 6px 0 0; white-space: pre-wrap; }
+    .ckb-enrich { display: flex; flex-direction: column; gap: 2px; font-size: 12px; line-height: 1.4; }
+    .ckb-enrich-k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 700; color: var(--ck-faint); }
+    .ckb-runs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; }
+    .ckb-runid { font-family: var(--mono, monospace); font-size: 11px; color: var(--ck-muted); background: var(--ck-surface-2); padding: 1px 6px; border-radius: 5px; }
+    .ckb-card-actions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 2px; }
+    .ckb-move { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ck-muted); }
+    .ckb-status { height: auto; min-height: 30px; background: var(--ck-surface); color: inherit; border: 1px solid var(--ck-line-2); border-radius: 7px; font-size: 12px; padding: 4px 7px; }
+    .ckb-status:focus { outline: none; border-color: var(--ck-accent); }
+
+    /* Done column: cancelled sub-list */
+    .ckb-cancelled { margin-top: 6px; padding-top: 8px; border-top: 1px dashed var(--ck-line); display: flex; flex-direction: column; gap: 8px; opacity: 0.72; }
+    .ckb-cancelled-h { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 700; color: var(--ck-faint); }
+
+    /* Bottom rails: Proposals + Questions */
+    .ck-board-rails { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; flex: 0 0 auto; }
+    .ck-rail-col { display: flex; flex-direction: column; gap: 9px; }
+    .ckb-rail-h { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 13px; font-weight: 700; }
+    .ckb-rail-n { font-size: 11px; font-weight: 700; color: var(--ck-accent); background: var(--ck-tint); border-radius: 999px; padding: 1px 8px; }
+    .ckb-rail-sub { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ck-faint); }
+    .ckb-empty { padding: 12px 2px; }
+
+    .ckb-prop, .ckb-q { background: var(--ck-surface); border: 1px solid var(--ck-line-2); border-radius: 10px; margin-bottom: 8px; }
+    .ckb-prop.open { border-color: color-mix(in srgb, var(--ck-accent) 45%, transparent); }
+    .ckb-prop-head { display: flex; align-items: center; gap: 9px; padding: 9px 11px; cursor: pointer; }
+    .ckb-prop-name { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .ckb-prop-body { padding: 0 11px 11px; display: flex; flex-direction: column; gap: 9px; }
+    .ckb-prop-prev { display: none; }
+    .ckb-prop-md, .ckb-deep-pane .aios-md { font-size: 12.5px; line-height: 1.5; max-height: 320px; overflow-y: auto; }
+
+    .ckb-q-head { display: flex; align-items: flex-start; gap: 9px; padding: 10px 11px 6px; }
+    .ckb-q-text { font-size: 12.5px; line-height: 1.4; flex: 1; }
+    .ckb-answer { width: calc(100% - 22px); margin: 0 11px; box-sizing: border-box; height: auto;
+      background: var(--panel); color: inherit; border: 1px solid var(--ck-line-2); border-radius: 8px;
+      font-family: inherit; font-size: 12px; padding: 7px 9px; resize: vertical; }
+    .ckb-answer:focus { outline: none; border-color: var(--ck-accent); }
+    .ckb-q .ckb-card-actions { padding: 8px 11px 11px; margin-top: 0; }
+
+    /* Deep-review (Opus) result pane */
+    .ckb-deep-pane { background: var(--ck-tint); border: 1px solid color-mix(in srgb, var(--ck-accent) 32%, transparent);
+      border-radius: 10px; padding: 11px 13px; font-size: 12.5px; display: flex; flex-direction: column; gap: 7px; }
+    .ckb-deep-pane.error { background: color-mix(in srgb, var(--ck-danger) 12%, transparent); border-color: color-mix(in srgb, var(--ck-danger) 40%, transparent); color: var(--ck-danger); }
+    .ckb-deep-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--ck-accent); text-transform: uppercase; letter-spacing: 0.05em; }
+    .ckb-deep-h { margin: 4px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ck-faint); font-weight: 700; }
+
+    @media (max-width: 1100px) {
+      .ck-kanban { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .ck-board-rails { grid-template-columns: 1fr; }
+    }
 
     /* ── Classic views hub (agentsHub.js) — fixed alignment + polish ─────── */
     /* Neutralise the global `.modal-body button{margin-top:6px}` +

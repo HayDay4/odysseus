@@ -44,6 +44,22 @@ export async function aiosPost(path, body) {
   }
 }
 
+/** PATCH JSON to the AIOS proxy (issue lifecycle moves). Returns parsed body (or {error}). */
+export async function aiosPatch(path, body) {
+  try {
+    const res = await fetch(`${API_BASE}/api/aios${path}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(body || {}),
+    });
+    return await res.json();
+  } catch (e) {
+    console.error('aios PATCH', path, 'failed', e);
+    return { error: String(e) };
+  }
+}
+
 /**
  * Create a modal-backed view.
  *   id        — modal element id (also used in the style.css centering list).

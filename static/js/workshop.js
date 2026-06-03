@@ -19,6 +19,7 @@
 import { aiosGet, aiosPost, esc } from './aiosShell.js';
 import { openRunTerminal } from './runTerminal.js';
 import agentsHubModule from './agentsHub.js';
+import boardModule from './board.js';
 
 const MODE_HELP = {
   quick: 'Sonnet 4.6 · ~$0.003 · ~10s',
@@ -133,11 +134,11 @@ async function loadRuns() {
   S.recentRuns = (r && r.runs) || [];
 }
 async function loadDecisions() {
-  // Phase A wires only the proposals count (its proxy already exists). The
-  // issues + questions proxy routes land in Phase B (B1); until then we leave
-  // those counters at 0 rather than fetch routes that would 404 in the console.
-  const props = await aiosGet('/proposals');
-  S.decisions.proposals = (props && (props.proposals || props).length) || 0;
+  // Phase B: the board module owns the issues/proposals/questions fetch (one
+  // pass) and returns the three actionable counts for the Decisions strip —
+  // in_review issues ready to merge · Hermes proposals · open escalations.
+  const counts = await boardModule.loadBoard();
+  if (counts) S.decisions = counts;
 }
 
 // ── Region renders ─────────────────────────────────────────────────────────
@@ -499,12 +500,19 @@ function switchTab(tab) {
   m.querySelectorAll('.ck-tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
   m.querySelector('#ck-workshop').style.display = tab === 'workshop' ? '' : 'none';
   m.querySelector('#ck-board').style.display = tab === 'board' ? '' : 'none';
+  if (tab === 'board') boardModule.renderBoard(m.querySelector('#ck-board'));
 }
 
 async function poll() {
   await Promise.all([loadRuns(), loadDecisions()]);
   if (!S.open) return;
   renderRail(); renderWork(); renderDecisions();
+  // Keep the board fresh while it's the active tab (all editable/expanded state
+  // lives in the board module, so a re-render never clobbers focus or a pane).
+  if (S.tab === 'board') {
+    const bd = document.querySelector('#aios-cockpit-modal #ck-board');
+    if (bd) boardModule.renderBoard(bd);
+  }
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -536,12 +544,14 @@ export async function openCockpit() {
           </div>
           <div id="ck-detail" class="ck-detail"></div>
         </div>
-        <div id="ck-board" class="ck-board" style="display:none;">
-          <p class="ck-muted" style="padding:20px;">The Issues / Done / Proposals board lands in Phase B.</p>
-        </div>
+        <div id="ck-board" class="ck-board" style="display:none;"></div>
       </div>
     </div>`;
   document.body.appendChild(modal);
+
+  // Board actions (status move, merge, approve, answer) resync the Decisions
+  // strip immediately with the counts the board just recomputed — no refetch.
+  boardModule.setOnChange((c) => { if (c) { S.decisions = c; renderDecisions(); } });
 
   document.getElementById('ck-close').addEventListener('click', closeCockpit);
   document.getElementById('ck-classic').addEventListener('click', () => agentsHubModule.openAgentsHub());
