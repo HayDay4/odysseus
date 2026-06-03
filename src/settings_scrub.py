@@ -48,3 +48,43 @@ def _scrub_value(key, value):
 def scrub_settings(settings: dict) -> dict:
     """Return a copy of ``settings`` with secret-shaped values masked (deep)."""
     return {k: _scrub_value(k, v) for k, v in (settings or {}).items()}
+
+
+# ---------------------------------------------------------------------------
+# Memory-for-egress scrubbing (egress firewall §4 — memory-dict counterpart of
+# prompt_security.sensitivity_tag). A memory entry sourced from the personal
+# domain must never egress verbatim; it is dropped to a tag + abstract so a
+# delegation prompt can still reference *that* a memory exists without leaking
+# its content. Secret-shaped leaves are additionally blanked via scrub_settings.
+# ---------------------------------------------------------------------------
+
+# Provenance prefixes that mark a memory as personal-domain (sensitive). Mirrors
+# ``prompt_security.SENSITIVE_SOURCE_ROOTS``; Odysseus Documents carry
+# ``source_email_*`` provenance, so a prefix match is the structural signal.
+SOURCE_SENSITIVE_PREFIXES = (
+    "source_email_", "source_contact_", "source_calendar_", "source_chat_",
+    "source_comms_", "source_personal_",
+)
+
+
+def _is_sensitive_source(source: str) -> bool:
+    s = (source or "").lower()
+    return any(s.startswith(p) for p in SOURCE_SENSITIVE_PREFIXES)
+
+
+def scrub_memory_for_egress(memory):
+    """Return an egress-safe copy of a memory entry.
+
+    If the entry's ``source`` is a sensitive-provenance prefix, its ``text`` is
+    replaced with an abstract placeholder (the content does not egress); the
+    category/id survive so a sanitized delegation prompt can note its existence.
+    Regardless of provenance, secret-shaped leaves are blanked (deep). Never
+    raises — a malformed entry passes through ``scrub_settings`` unchanged."""
+    if not isinstance(memory, dict):
+        return memory
+    out = scrub_settings(memory)
+    if _is_sensitive_source(str(out.get("source", ""))):
+        cat = out.get("category", "memory")
+        out["text"] = f"<redacted: sensitive {cat} memory — not egress-eligible>"
+        out["egress_redacted"] = True
+    return out
