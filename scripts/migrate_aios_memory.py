@@ -141,7 +141,7 @@ def collect(root):
     return personal, technical, skipped
 
 
-def migrate(root=DEFAULT_POOL, *, dry_run=True, owner="diego", dedup_threshold=0.72):
+def migrate(root=DEFAULT_POOL, *, dry_run=True, owner="Kwiat", dedup_threshold=0.72):
     """Migrate the PERSONAL slice into Chroma. --dry-run (default) only reports."""
     personal, technical, skipped = collect(root)
     print(f"AIOS pool: {root}")
@@ -184,7 +184,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Migrate AIOS personal memory → Chroma (REVIEW B5 first).")
     ap.add_argument("--root", default=DEFAULT_POOL, help="AIOS memory pool root.")
     ap.add_argument("--apply", action="store_true", help="Actually write (default: dry-run).")
-    ap.add_argument("--owner", default="diego")
+    ap.add_argument("--owner", default="Kwiat",
+                    help="Odysseus app account that owns the migrated memories.")
     args = ap.parse_args(argv)
     migrate(args.root, dry_run=not args.apply, owner=args.owner)
 
