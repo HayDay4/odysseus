@@ -259,6 +259,17 @@ async def action_consolidate_memory(owner: str, **kwargs) -> Tuple[str, bool]:
 
         if total_removed or total_cleaned:
             manager.save(all_memories)
+            # Native consolidation must also rebuild the Chroma index — otherwise
+            # the vector store keeps stale ids for the pruned memories. Historically
+            # action_consolidate_memory saved JSON only; rebuild() was called nowhere
+            # but memory_extractor.audit_memories. Best-effort; never block the tidy.
+            try:
+                from src.memory_vector import MemoryVectorStore
+                _vs = MemoryVectorStore(DATA_DIR)
+                if _vs.healthy:
+                    _vs.rebuild(all_memories)
+            except Exception:
+                pass
             if ai_used:
                 reasons = ai_reasons[:3]
                 reason_text = f": {'; '.join(reasons)}" if reasons else ""
