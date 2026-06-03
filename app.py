@@ -663,6 +663,11 @@ set_mcp_manager(mcp_manager)
 app.include_router(setup_mcp_routes(mcp_manager))
 logger.info("MCP routes initialized")
 
+# Egress consent handshake (MIGRATION_PLAN §4 — the "Approve egress" wall)
+from routes.egress_routes import setup_egress_routes
+app.include_router(setup_egress_routes())
+logger.info("Egress consent routes initialized")
+
 # AI Interaction tools (debates, pipelines, self-managing AI, UI control)
 from src.ai_interaction import set_session_manager as set_ai_session_manager, set_memory_manager as set_ai_memory_manager, set_rag_manager as set_ai_rag_manager
 set_ai_session_manager(session_manager)
