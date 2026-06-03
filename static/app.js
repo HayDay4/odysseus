@@ -22,6 +22,7 @@ import censorModule from './js/censor.js';
 import galleryModule from './js/gallery.js';
 import tasksModule from './js/tasks.js';
 import egressConsentModule from './js/egressConsent.js';
+import agentsHubModule from './js/agentsHub.js';
 import calendarModule from './js/calendar.js';
 import notesModule from './js/notes.js';
 import adminModule from './js/admin.js';
@@ -869,18 +870,22 @@ function initializeEventListeners() {
   // Tasks tool button
   const toolTasksBtn = el('tool-tasks-btn');
   if (toolTasksBtn) {
-  // Agents buttons (sidebar + rail)
-  const agentsBtns = [el("rail-agents"), el("tool-agents-btn")].filter(Boolean);
-  agentsBtns.forEach(btn => {
-    btn.addEventListener("click", () => {
-    });
-  });
     toolTasksBtn.addEventListener('click', () => {
       if (tasksModule) {
         tasksModule.isTasksOpen() ? tasksModule.closeTasks() : tasksModule.openTasks();
       }
     });
   }
+
+  // Agents buttons (rail + sidebar) — open the AIOS workforce hub (native glance
+  // views: roster, org, proposals, brief, inbox). Replaces the old no-op stub.
+  [el('rail-agents'), el('tool-agents-btn')].filter(Boolean).forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (agentsHubModule) {
+        agentsHubModule.isAgentsHubOpen() ? agentsHubModule.closeAgentsHub() : agentsHubModule.openAgentsHub();
+      }
+    });
+  });
 
   // Calendar tool button
   const toolCalendarBtn = el('tool-calendar-btn');
@@ -1036,6 +1041,7 @@ function initializeEventListeners() {
     '/tasks':    () => document.getElementById('tool-tasks-btn')?.click(),
     '/library':  () => sessionModule && sessionModule.openLibrary && sessionModule.openLibrary(),
     '/egress':   () => egressConsentModule && egressConsentModule.openEgressConsent(),
+    '/agents':   () => agentsHubModule && agentsHubModule.openAgentsHub(),
   };
   const _opener = _routeOpen[urlPath];
   // Defer the opener — at this point in init, the modules whose handlers

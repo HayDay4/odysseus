@@ -668,6 +668,11 @@ from routes.egress_routes import setup_egress_routes
 app.include_router(setup_egress_routes())
 logger.info("Egress consent routes initialized")
 
+# AIOS workforce proxy (MIGRATION_PLAN §7 — native glance views + ops console)
+from routes.agents_routes import setup_agents_routes
+app.include_router(setup_agents_routes())
+logger.info("AIOS workforce proxy routes initialized")
+
 # AI Interaction tools (debates, pipelines, self-managing AI, UI control)
 from src.ai_interaction import set_session_manager as set_ai_session_manager, set_memory_manager as set_ai_memory_manager, set_rag_manager as set_ai_rag_manager
 set_ai_session_manager(session_manager)

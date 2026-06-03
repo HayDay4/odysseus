@@ -4767,7 +4767,15 @@ body.bg-pattern-sparkles {
       #theme-modal,
       #settings-modal,
       #email-lib-modal,
-      #egress-modal {
+      #egress-modal,
+      #aios-hub-modal,
+      #aios-roster-modal,
+      #aios-org-modal,
+      #aios-proposals-modal,
+      #aios-brief-modal,
+      #aios-inbox-modal,
+      #aios-kanban-modal,
+      #aios-terminal-modal {
         left: calc(var(--icon-rail-w, 48px) + var(--sidebar-w, 0px));
         width: calc(100% - (var(--icon-rail-w, 48px) + var(--sidebar-w, 0px)));
         box-sizing: border-box;
