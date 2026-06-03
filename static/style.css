@@ -5066,7 +5066,7 @@ body.bg-pattern-sparkles {
        roster / org / proposals / inbox / runs — cohesive cards, badges,
        tables, markdown, all derived from theme tokens via color-mix. */
     #aios-roster-modal, #aios-org-modal, #aios-proposals-modal,
-    #aios-inbox-modal, #aios-kanban-modal, #aios-cost-modal {
+    #aios-inbox-modal, #aios-kanban-modal, #aios-cost-modal, #aios-runsummary-modal {
       --a-accent: var(--accent, var(--green));
       --a-surface:   color-mix(in srgb, var(--fg) 4%,  var(--panel));
       --a-surface-2: color-mix(in srgb, var(--fg) 8%,  var(--panel));
@@ -5236,6 +5236,37 @@ body.bg-pattern-sparkles {
     .cost-bar-val { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--a-accent); text-align: right; min-width: 56px; }
     .cost-drill-hint { font-size: 11px; color: var(--a-faint); margin-bottom: 8px; }
     .cost-empty { font-size: 12px; color: var(--a-faint); padding: 6px 8px; }
+
+    /* ── Run summary (runSummary.js) ─────────────────────────────────────── */
+    #aios-runsummary-modal .aios-modal-content { width: min(720px, 95vw); }
+    #aios-runsummary-modal .modal-body button { margin-top: 0; height: auto; }
+    .rs-head { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+    .rs-id { font-family: var(--mono, monospace); font-size: 13px; color: var(--a-muted); }
+    .rs-status {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700;
+      padding: 2px 9px; border-radius: 999px; border: 1px solid transparent;
+    }
+    .rs-status.done { color: #5bb98c; background: color-mix(in srgb, #5bb98c 14%, transparent); }
+    .rs-status.failed { color: var(--a-danger); background: color-mix(in srgb, var(--a-danger) 14%, transparent); }
+    .rs-status.killed { color: var(--a-faint); background: var(--a-surface-2); }
+    .rs-status.active { color: var(--a-accent); background: var(--a-tint); }
+    .rs-task {
+      font-size: 13.5px; line-height: 1.5; color: var(--fg); white-space: pre-wrap; word-break: break-word;
+      background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 10px; padding: 12px 14px;
+      max-height: 130px; overflow: auto;
+    }
+    .rs-stats { display: flex; gap: 10px; margin-top: 14px; }
+    .rs-stat {
+      flex: 1; display: flex; flex-direction: column; gap: 2px; align-items: center;
+      background: var(--a-surface); border: 1px solid var(--a-line-2); border-radius: 10px; padding: 11px 8px;
+    }
+    .rs-stat-v { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--a-accent); }
+    .rs-stat-l { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--a-faint); }
+    .rs-tokbreak { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; font-size: 11px; color: var(--a-faint); }
+    .rs-tokbreak b { color: var(--a-muted); font-variant-numeric: tabular-nums; }
+    .rs-pr { margin-top: 12px; font-size: 13px; }
+    .rs-pr a { color: var(--a-accent); font-weight: 600; }
+    #aios-runsummary-modal #rs-body { margin-top: 4px; }
 
     .modal-header {
       display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;

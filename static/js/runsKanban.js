@@ -5,6 +5,10 @@
  */
 import { createAiosModal, aiosGet, esc } from './aiosShell.js';
 import runTerminalModule from './runTerminal.js';
+import { openRunSummary } from './runSummary.js';
+
+// run_id -> run row, so a card click can branch on status + pass full data.
+let _byId = {};
 
 // runs.db status → display column. active runs are in_progress; recent carry a
 // terminal status (panel _DB_STATE: completed→done, failed/crashed, cancelled→killed).
@@ -32,6 +36,8 @@ async function render(body) {
   const runs = []
     .concat((activeData && activeData.runs) || [])
     .concat((recentData && recentData.runs) || []);
+  _byId = {};
+  runs.forEach((r) => { if (r && r.id) _byId[r.id] = r; });
   const cols = COLUMNS.map((c) => {
     const items = runs.filter((r) => c.match(r.status));
     return `<div class="aios-kcol">
@@ -40,8 +46,14 @@ async function render(body) {
     </div>`;
   }).join('');
   body.innerHTML = `<div class="aios-kgrid">${cols}</div>`;
+  // Active run → live terminal (it tails tool-calls.jsonl). Finished run → the
+  // what-was-done summary (the live stream is gone once a run ends).
   body.querySelectorAll('.aios-kcard').forEach((el) =>
-    el.addEventListener('click', () => runTerminalModule.openRunTerminal(el.dataset.run)));
+    el.addEventListener('click', () => {
+      const r = _byId[el.dataset.run];
+      if (r && r.status === 'in_progress') runTerminalModule.openRunTerminal(r.id);
+      else openRunSummary(r || { id: el.dataset.run });
+    }));
 }
 
 const modal = createAiosModal({ id: 'aios-kanban-modal', title: 'Runs', render, pollMs: 5000 });

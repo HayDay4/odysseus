@@ -11,6 +11,7 @@
  * bars are CSS, theme-tinted.
  */
 import { createAiosModal, aiosGet, esc } from './aiosShell.js';
+import { openRunSummary } from './runSummary.js';
 
 let _roster = null;       // name -> roster row
 let _children = null;     // name -> [child names]
@@ -32,14 +33,16 @@ async function _ensureData() {
 
 const _fmt = (v) => '$' + Number(v || 0).toFixed(2);
 
-function _bars(items, drillable) {
+function _bars(items, kind) {
+  // kind: 'reports' (drill into team) | 'tasks' (open run summary) | null (static)
   if (!items.length) return '<div class="cost-empty">No spend recorded.</div>';
   const max = Math.max(0.000001, ...items.map((i) => i.value));
   return '<div class="cost-bars">' + items.map((i) => {
     const pct = Math.max(3, Math.round((i.value / max) * 100));
     const sub = i.sub ? `<span class="cost-bar-sub">${esc(i.sub)}</span>` : '';
-    const cls = (drillable && i.name) ? 'drillable' : '';
-    const attr = (drillable && i.name) ? `data-drill="${esc(i.name)}"` : 'disabled';
+    let cls = '', attr = 'disabled';
+    if (kind === 'reports' && i.name) { cls = 'drillable'; attr = `data-drill="${esc(i.name)}"`; }
+    else if (kind === 'tasks' && i.runId) { cls = 'drillable'; attr = `data-run="${esc(i.runId)}"`; }
     return `<button class="cost-bar ${cls}" ${attr}>
       <span class="cost-bar-label">${esc(i.label)}${sub}</span>
       <span class="cost-bar-track"><span class="cost-bar-fill" style="width:${pct}%"></span></span>
@@ -76,39 +79,48 @@ async function render(body) {
     html += `<div class="cost-section">
       <div class="cost-section-h">Direct reports — cost this week</div>
       <div class="cost-drill-hint">Tap a report to drill into its team.</div>
-      ${_bars(items, true)}
+      ${_bars(items, 'reports')}
     </div>`;
   }
 
   html += `<div class="cost-section">
     <div class="cost-section-h">${esc(name)} — spend by task</div>
+    <div class="cost-drill-hint">Tap a task to see what the run did.</div>
     <div id="cost-tasks"><div class="cost-empty">Loading…</div></div>
   </div>`;
 
   body.innerHTML = html;
   body.querySelectorAll('.cost-crumb').forEach((b) =>
     b.addEventListener('click', () => { _path = _path.slice(0, Number(b.dataset.idx) + 1); render(body); }));
-  body.querySelectorAll('.cost-bar.drillable').forEach((b) =>
+  body.querySelectorAll('.cost-section .cost-bar.drillable[data-drill]').forEach((b) =>
     b.addEventListener('click', () => { _path.push(b.dataset.drill); render(body); }));
 
-  // Per-task spend (async; profile == agent name in runs.db)
+  // Per-task spend (async; profile == agent name in runs.db). Each task keeps a
+  // representative (most-recent) run so the bar can open that run's summary.
   const hist = await aiosGet(`/runs/history?profile=${encodeURIComponent(name)}&limit=100`);
   const runs = (hist && hist.runs) || [];
   const byTask = {};
   runs.forEach((r) => {
-    const t = String(r.task || '(untitled)').slice(0, 52).trim() || '(untitled)';
-    byTask[t] = (byTask[t] || 0) + (Number(r.cost_usd) || 0);
+    const t = String(r.task || '(untitled)').slice(0, 60).trim() || '(untitled)';
+    if (!byTask[t]) byTask[t] = { value: 0, run: r };   // runs are DESC → first = newest
+    byTask[t].value += (Number(r.cost_usd) || 0);
   });
   const taskItems = Object.entries(byTask)
-    .map(([label, value]) => ({ label, value }))
+    .map(([label, v]) => ({ label, value: v.value, runId: v.run && v.run.id, _run: v.run }))
     .filter((i) => i.value > 0)
     .sort((a, b) => b.value - a.value)
     .slice(0, 8);
   const el = document.querySelector('#aios-cost-modal #cost-tasks');
   if (el) {
-    el.innerHTML = taskItems.length
-      ? _bars(taskItems, false)
-      : '<div class="cost-empty">No per-task spend attributed in the last 100 runs.</div>';
+    if (!taskItems.length) {
+      el.innerHTML = '<div class="cost-empty">No per-task spend attributed in the last 100 runs.</div>';
+    } else {
+      el.innerHTML = _bars(taskItems, 'tasks');
+      el.querySelectorAll('.cost-bar.drillable[data-run]').forEach((b) => {
+        const item = taskItems.find((i) => i.runId === b.dataset.run);
+        b.addEventListener('click', () => openRunSummary(item && item._run));
+      });
+    }
   }
 }
 
