@@ -49,14 +49,29 @@ async def _get(path: str):
         return JSONResponse({"error": f"panel unreachable: {e}"}, status_code=502)
 
 
-async def _post(path: str, body):
-    """Proxy a POST to the panel, returning its JSON (or a 502 envelope)."""
+async def _post(path: str, body, timeout: float | None = None):
+    """Proxy a POST to the panel, returning its JSON (or a 502 envelope).
+
+    `timeout` overrides the default for slow synchronous endpoints (e.g. the
+    Deep-review Opus call, which can run ~30-90s)."""
     try:
-        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+        async with httpx.AsyncClient(timeout=timeout or HTTP_TIMEOUT) as client:
             r = await client.post(f"{PANEL_BASE}{path}", json=body or {})
         return JSONResponse(r.json(), status_code=r.status_code)
     except httpx.HTTPError as e:
         logger.warning("aios proxy POST %s failed: %s", path, e)
+        return JSONResponse({"error": f"panel unreachable: {e}"}, status_code=502)
+
+
+async def _patch(path: str, body):
+    """Proxy a PATCH to the panel, returning its JSON (or a 502 envelope).
+    Used for issue lifecycle moves (PATCH /api/issues/{id})."""
+    try:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            r = await client.patch(f"{PANEL_BASE}{path}", json=body or {})
+        return JSONResponse(r.json(), status_code=r.status_code)
+    except httpx.HTTPError as e:
+        logger.warning("aios proxy PATCH %s failed: %s", path, e)
         return JSONResponse({"error": f"panel unreachable: {e}"}, status_code=502)
 
 
@@ -213,5 +228,62 @@ def setup_agents_routes() -> APIRouter:
         if seg is None:
             return JSONResponse({"error": "invalid run_id"}, status_code=400)
         return await _post(f"/api/runs/{seg}/cancel", {})
+
+    # --- Board: issues kanban / questions / deep-review (Phase B) ---
+    # Only known query keys are forwarded (no blind passthrough) so the proxy
+    # stays a tight allow-list surface even for the issues list.
+    _ISSUE_QUERY_KEYS = ("status", "assignee", "created_by", "goal_id", "board")
+
+    @router.get("/issues")
+    async def issues(request: Request):
+        parts = [
+            f"{k}={quote(str(v), safe='')}"
+            for k in _ISSUE_QUERY_KEYS
+            if (v := request.query_params.get(k)) is not None
+        ]
+        qs = "?" + "&".join(parts) if parts else ""
+        return await _get(f"/api/issues{qs}")
+
+    @router.get("/issues/{issue_id}")
+    async def issue_detail(issue_id: str):
+        seg = _safe_segment(issue_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid issue id"}, status_code=400)
+        return await _get(f"/api/issues/{seg}")
+
+    @router.post("/issues")
+    async def issue_create(body: dict):
+        return await _post("/api/issues", body)
+
+    @router.patch("/issues/{issue_id}")
+    async def issue_update(issue_id: str, body: dict):
+        seg = _safe_segment(issue_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid issue id"}, status_code=400)
+        return await _patch(f"/api/issues/{seg}", body)
+
+    @router.post("/issues/{issue_id}/merge")
+    async def issue_merge(issue_id: str):
+        seg = _safe_segment(issue_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid issue id"}, status_code=400)
+        return await _post(f"/api/issues/{seg}/merge", {})
+
+    @router.get("/questions")
+    async def questions():
+        return await _get("/api/questions")
+
+    @router.post("/questions/{q_id}/answer")
+    async def question_answer(q_id: str, body: dict):
+        seg = _safe_segment(q_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid question id"}, status_code=400)
+        return await _post(f"/api/questions/{seg}/answer", body)
+
+    @router.post("/review/deep")
+    async def review_deep(body: dict):
+        # Opus reads the item's full context + reasons — allow a long synchronous
+        # window (the panel caps the model call itself; we just wait on it).
+        return await _post("/api/review/deep", body, timeout=150.0)
 
     return router
