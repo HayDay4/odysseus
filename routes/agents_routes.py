@@ -190,6 +190,13 @@ def setup_agents_routes() -> APIRouter:
             return JSONResponse({"error": "invalid project slug"}, status_code=400)
         return await _get(f"/api/projects/{seg}/kanban")
 
+    @router.get("/projects/{slug}/manager")
+    async def project_manager(slug: str):
+        seg = _safe_segment(slug)
+        if seg is None:
+            return JSONResponse({"error": "invalid project slug"}, status_code=400)
+        return await _get(f"/api/projects/{seg}/manager")
+
     @router.post("/brief/draft")
     async def brief_draft(body: dict):
         return await _post("/api/brief/draft", body)

@@ -5141,6 +5141,52 @@ body.bg-pattern-sparkles {
       .ck-board-rails { grid-template-columns: 1fr; }
     }
 
+    /* ── Manager-brain spawn path (workshop.js §5, Phase C) ──────────────── */
+    .ck-brain-id { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 2px 0; }
+    .ck-brain-badge {
+      display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800;
+      letter-spacing: 0.04em; color: var(--ck-accent); background: var(--ck-tint);
+      border: 1px solid color-mix(in srgb, var(--ck-accent) 40%, transparent);
+      padding: 4px 11px; border-radius: 999px;
+    }
+    .ck-brain-badge .ck-ic { width: 14px; height: 14px; }
+    .ck-brain-id .ck-run-prof { cursor: help; }
+    .ck-brain-modes { /* inherits .ck-modes flex layout */ }
+
+    .ck-plan-note {
+      display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ck-muted);
+      background: var(--ck-surface); border: 1px solid var(--ck-line); border-radius: 9px; padding: 10px 12px;
+    }
+    .ck-plan-note code { color: var(--ck-accent); font-family: var(--mono, monospace); }
+    .ck-plan-head { font-size: 12.5px; color: var(--ck-muted); margin: 2px 0 2px; }
+    .ck-plan-head strong { color: var(--ck-ink); }
+
+    .ck-subtask { background: var(--ck-surface); border: 1px solid var(--ck-line-2); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 7px; }
+    .ck-subtask-head { display: flex; align-items: center; gap: 8px; }
+    .ck-subtask-title {
+      flex: 1; height: auto; min-height: 30px; box-sizing: border-box;
+      background: var(--panel); color: inherit; border: 1px solid var(--ck-line-2);
+      border-radius: 7px; font-family: inherit; font-size: 13px; font-weight: 600; padding: 5px 9px;
+    }
+    .ck-subtask-title:focus { outline: none; border-color: var(--ck-accent); }
+    .ck-subtask-del { width: 26px; height: 26px; flex: 0 0 auto; }
+    .ck-subtask-del .ck-ic { width: 13px; height: 13px; }
+    .ck-subtask-prompt {
+      width: 100%; box-sizing: border-box; height: auto;
+      background: var(--panel); color: inherit; border: 1px solid var(--ck-line-2); border-radius: 8px;
+      font-family: var(--mono, 'Fira Code', monospace); font-size: 12px; line-height: 1.5; padding: 9px 10px; resize: vertical;
+    }
+    .ck-subtask-prompt:focus { outline: none; border-color: var(--ck-accent); }
+    #ck-brain-result:not(:empty) { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+
+    /* threaded WORK: a child specialist run nested under its manager run */
+    .ck-run.child { margin-left: 16px; position: relative; }
+    .ck-run.child::before {
+      content: ""; position: absolute; left: 4px; top: -3px; bottom: 50%; width: 9px;
+      border-left: 1.5px solid var(--ck-line-2); border-bottom: 1.5px solid var(--ck-line-2);
+      border-bottom-left-radius: 6px;
+    }
+
     /* ── Classic views hub (agentsHub.js) — fixed alignment + polish ─────── */
     /* Neutralise the global `.modal-body button{margin-top:6px}` +
        `button{height:32px}` rules that were crushing the tiles. */
