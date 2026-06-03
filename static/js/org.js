@@ -6,22 +6,24 @@ import { createAiosModal, aiosGet, esc } from './aiosShell.js';
 
 function _node(n, depth) {
   if (!n) return '';
-  const pad = depth * 16;
   const kids = (n.children || []).map((c) => _node(c, depth + 1)).join('');
-  const kind = n.kind ? `<span style="font-size:11px;opacity:0.55;">${esc(n.kind)}</span>` : '';
-  const desc = n.description ? `<div style="font-size:11px;opacity:0.6;">${esc(n.description)}</div>` : '';
-  return `<div class="org-node" style="padding-left:${pad}px;margin:3px 0;border-left:1px solid var(--border);">
-    <div><strong>${esc(n.name)}</strong> ${kind}</div>${desc}</div>${kids}`;
+  const kind = n.kind ? `<span class="aios-kind">${esc(n.kind)}</span>` : '';
+  const desc = n.description ? `<div class="aios-org-desc">${esc(n.description)}</div>` : '';
+  return `<div class="aios-org-node" style="margin-left:${depth * 18}px;">
+    <div class="aios-org-row">
+      <span class="aios-org-name">${esc(n.name)}</span> ${kind}
+    </div>${desc}
+  </div>${kids}`;
 }
 
 async function render(body) {
   const data = await aiosGet('/org');
   const root = data && data.root;
   if (!root) {
-    body.innerHTML = '<div style="opacity:0.6;padding:10px;">Org tree unavailable.</div>';
+    body.innerHTML = '<div class="aios-empty">Org tree unavailable.</div>';
     return;
   }
-  body.innerHTML = `<div class="org-tree">${_node(root, 0)}</div>`;
+  body.innerHTML = `<div class="aios-org-tree" style="display:flex;flex-direction:column;gap:4px;">${_node(root, 0)}</div>`;
 }
 
 const modal = createAiosModal({ id: 'aios-org-modal', title: 'Org Tree', render });

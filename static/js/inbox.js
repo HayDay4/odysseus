@@ -7,11 +7,14 @@ import { createAiosModal, aiosGet, esc } from './aiosShell.js';
 
 function _item(it) {
   const title = it.title || it.subject || it.kind || it.id || '(item)';
-  const kind = it.kind ? `<span style="font-size:11px;opacity:0.55;">${esc(it.kind)}</span>` : '';
+  const kind = it.kind ? `<span class="aios-kind">${esc(it.kind)}</span>` : '';
   const sub = it.summary || it.detail || (it.advisory && it.advisory.summary) || '';
-  return `<div class="inbox-item" style="border:1px solid var(--border);border-radius:6px;padding:9px;">
-    <div><strong>${esc(title)}</strong> ${kind}</div>
-    ${sub ? `<div style="font-size:12px;opacity:0.72;margin-top:4px;white-space:pre-wrap;">${esc(String(sub).slice(0, 400))}</div>` : ''}
+  return `<div class="aios-card">
+    <div class="aios-card-head static">
+      ${kind}
+      <span class="aios-title">${esc(title)}</span>
+    </div>
+    ${sub ? `<div class="aios-card-body"><div class="aios-preview">${esc(String(sub).slice(0, 400))}</div></div>` : ''}
   </div>`;
 }
 
@@ -19,7 +22,7 @@ async function render(body) {
   const data = await aiosGet('/inbox');
   const items = (data && (data.items || data.cards)) || [];
   if (!items.length) {
-    body.innerHTML = '<div style="opacity:0.6;padding:10px;">Inbox is empty.</div>';
+    body.innerHTML = '<div class="aios-empty">Inbox is empty.</div>';
     return;
   }
   body.innerHTML = items.map(_item).join('');

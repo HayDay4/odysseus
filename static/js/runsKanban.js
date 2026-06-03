@@ -19,10 +19,9 @@ function _card(r) {
   const cost = (r.cost_usd != null && r.cost_usd > 0) ? ` · $${Number(r.cost_usd).toFixed(2)}` : '';
   const prof = r.profile ? ` · ${esc(r.profile)}` : '';
   const task = (r.task || '').slice(0, 90);
-  return `<div class="kanban-card" data-run="${esc(r.id)}"
-       style="border:1px solid var(--border);border-radius:6px;padding:7px;margin-bottom:6px;cursor:pointer;">
-    <div style="font-size:11px;opacity:0.6;">${esc(r.short_id || r.id)}${prof}${cost}</div>
-    <div style="font-size:12px;">${esc(task)}</div>
+  return `<div class="aios-kcard" data-run="${esc(r.id)}">
+    <div class="aios-kcard-meta">${esc(r.short_id || r.id)}${prof}${cost}</div>
+    <div class="aios-kcard-task">${esc(task)}</div>
   </div>`;
 }
 
@@ -35,14 +34,13 @@ async function render(body) {
     .concat((recentData && recentData.runs) || []);
   const cols = COLUMNS.map((c) => {
     const items = runs.filter((r) => c.match(r.status));
-    return `<div class="kanban-col" style="flex:1;min-width:0;">
-      <div style="font-size:12px;font-weight:600;opacity:0.8;margin-bottom:6px;">
-        ${esc(c.label)} <span style="opacity:0.5;">(${items.length})</span></div>
-      ${items.map(_card).join('') || '<div style="opacity:0.4;font-size:11px;">—</div>'}
+    return `<div class="aios-kcol">
+      <div class="aios-kcol-h">${esc(c.label)} <span class="aios-kcount">${items.length}</span></div>
+      ${items.map(_card).join('') || '<div class="aios-meta" style="padding:4px 2px;">—</div>'}
     </div>`;
   }).join('');
-  body.innerHTML = `<div class="kanban-grid" style="display:flex;gap:10px;align-items:flex-start;">${cols}</div>`;
-  body.querySelectorAll('.kanban-card').forEach((el) =>
+  body.innerHTML = `<div class="aios-kgrid">${cols}</div>`;
+  body.querySelectorAll('.aios-kcard').forEach((el) =>
     el.addEventListener('click', () => runTerminalModule.openRunTerminal(el.dataset.run)));
 }
 
