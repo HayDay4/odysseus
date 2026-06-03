@@ -4824,9 +4824,16 @@ body.bg-pattern-sparkles {
       height: 90vh; max-height: 90vh; overflow: hidden; padding: 0;
       background: var(--panel);
     }
-    /* The global `.modal-body button { margin-top: 6px }` rule misaligns every
-       button in the cockpit — neutralise it here. */
+    /* Two global base rules fight the cockpit:
+       `.modal-body button { margin-top: 6px }` (misaligns) and
+       `button { height: 32px }` (clips icon / multi-line buttons).
+       Neutralise both so cockpit buttons size to their own padding/content. */
     #aios-cockpit-modal .modal-body button { margin-top: 0; }
+    #aios-cockpit-modal .ck-tab,
+    #aios-cockpit-modal .ck-btn,
+    #aios-cockpit-modal .ck-proj,
+    #aios-cockpit-modal .ck-run,
+    #aios-cockpit-modal .ck-dtab { height: auto; min-height: 0; }
 
     .ck-ic { width: 15px; height: 15px; flex: 0 0 auto; }
     .ck-iconbtn {
@@ -4920,10 +4927,12 @@ body.bg-pattern-sparkles {
 
     /* Form fields */
     .ck-spawn textarea, .ck-spawn select, #ck-edited {
-      width: 100%; box-sizing: border-box; margin-top: 5px;
+      width: 100%; box-sizing: border-box; margin-top: 5px; height: auto;
       background: var(--ck-surface); color: inherit; border: 1px solid var(--ck-line-2); border-radius: 9px;
       font-family: inherit; font-size: 13px; padding: 10px 11px; transition: border-color 0.13s, box-shadow 0.13s;
     }
+    /* The global `select { height: 32px }` clips the value with our padding. */
+    .ck-spawn select { height: auto; min-height: 42px; line-height: 1.2; }
     .ck-spawn textarea:focus, .ck-spawn select:focus, #ck-edited:focus {
       outline: none; border-color: var(--ck-accent);
       box-shadow: 0 0 0 3px color-mix(in srgb, var(--ck-accent) 18%, transparent);
@@ -5021,12 +5030,16 @@ body.bg-pattern-sparkles {
     .ck-board .ck-muted { padding: 24px; }
 
     /* ── Classic views hub (agentsHub.js) — fixed alignment + polish ─────── */
+    /* Neutralise the global `.modal-body button{margin-top:6px}` +
+       `button{height:32px}` rules that were crushing the tiles. */
     #aios-hub-modal .modal-body button { margin-top: 0; }
+    #aios-hub-modal .aios-hub-tile { height: auto; }
     #aios-hub-modal .aios-modal-content { width: min(560px, 94vw); }
     .aios-hub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 4px; }
     .aios-hub-tile {
       display: flex; align-items: center; gap: 12px; text-align: left; cursor: pointer;
-      padding: 15px 16px; border-radius: 12px;
+      min-height: 58px; box-sizing: border-box;
+      padding: 14px 16px; border-radius: 12px;
       border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
       background: color-mix(in srgb, var(--fg) 4%, var(--panel));
       color: var(--fg); transition: transform 0.13s, border-color 0.13s, background 0.13s, box-shadow 0.13s;
