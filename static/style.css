@@ -4908,7 +4908,11 @@ body.bg-pattern-sparkles {
     .ck-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; }
 
     /* Centre column */
-    .ck-center { display: flex; flex-direction: column; gap: 16px; padding: 18px 20px; }
+    .ck-center { display: flex; flex-direction: column; gap: 18px; padding: 20px 22px; }
+    /* The spawn form is a flex column so every block gets even vertical rhythm
+       instead of relying on per-element margins (which left blocks touching). */
+    .ck-spawn { display: flex; flex-direction: column; gap: 16px; }
+    #ck-draft-result:not(:empty) { display: flex; flex-direction: column; gap: 12px; }
     .ck-proj-head { display: flex; align-items: flex-start; justify-content: space-between; }
     .ck-eyebrow { font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ck-faint); font-weight: 600; }
     .ck-proj-title { font-size: 20px; font-weight: 700; margin: 2px 0 0; letter-spacing: -0.01em; }
@@ -4927,7 +4931,7 @@ body.bg-pattern-sparkles {
 
     /* Form fields */
     .ck-spawn textarea, .ck-spawn select, #ck-edited {
-      width: 100%; box-sizing: border-box; margin-top: 5px; height: auto;
+      width: 100%; box-sizing: border-box; height: auto;
       background: var(--ck-surface); color: inherit; border: 1px solid var(--ck-line-2); border-radius: 9px;
       font-family: inherit; font-size: 13px; padding: 10px 11px; transition: border-color 0.13s, box-shadow 0.13s;
     }
@@ -4939,7 +4943,7 @@ body.bg-pattern-sparkles {
     }
     #ck-edited, #ck-task { font-family: var(--mono, 'Fira Code', monospace); line-height: 1.5; resize: vertical; }
     .ck-form-row { display: flex; gap: 16px; align-items: flex-end; }
-    .ck-field { display: flex; flex-direction: column; font-size: 12px; color: var(--ck-muted); flex: 1; gap: 2px; font-weight: 500; }
+    .ck-field { display: flex; flex-direction: column; font-size: 12px; color: var(--ck-muted); flex: 1; gap: 6px; font-weight: 500; }
     .ck-field.ck-check { flex-direction: row; align-items: center; gap: 7px; flex: 0 0 auto; color: var(--ck-ink); cursor: pointer; }
     .ck-field.ck-check input { accent-color: var(--ck-accent); }
 
