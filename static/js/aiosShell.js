@@ -9,10 +9,12 @@
 
 export const API_BASE = window.location.origin;
 
-/** HTML-escape a value for safe innerHTML interpolation. */
+/** HTML-escape a value for safe innerHTML interpolation. Encodes quotes too so
+ *  it is safe in attribute context (e.g. data-name="${esc(...)}"). */
 export function esc(s) {
   return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 /** GET JSON from the same-origin AIOS proxy (/api/aios/...). Returns null on error. */

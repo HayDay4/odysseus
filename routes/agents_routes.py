@@ -12,12 +12,25 @@
 # inbox,runs}/*. The SSE passthrough (/api/aios/runs/{id}/stream) is added in
 # Phase 5 (P5-T4) for the run terminal.
 import logging
+import re
+from urllib.parse import quote
 
 import httpx
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse, StreamingResponse
 
 logger = logging.getLogger(__name__)
+
+# Path segments interpolated into the upstream URL (proposal name / run_id) must
+# be simple identifiers — reject traversal / query-injection before proxying.
+_SAFE_SEGMENT = re.compile(r"^[A-Za-z0-9_.-]+$")
+
+
+def _safe_segment(value: str) -> str | None:
+    """Return a URL-encoded path segment, or None if it isn't a simple id."""
+    if not value or not _SAFE_SEGMENT.match(value):
+        return None
+    return quote(value, safe="")
 
 # Panel control-plane API. Overridable for non-default binds / tests.
 import os
@@ -65,15 +78,24 @@ def setup_agents_routes() -> APIRouter:
 
     @router.get("/proposals/{name}")
     async def proposal_detail(name: str):
-        return await _get(f"/api/agents/proposals/{name}")
+        seg = _safe_segment(name)
+        if seg is None:
+            return JSONResponse({"error": "invalid proposal name"}, status_code=400)
+        return await _get(f"/api/agents/proposals/{seg}")
 
     @router.post("/proposals/{name}/approve")
     async def proposal_approve(name: str):
-        return await _post(f"/api/agents/proposals/{name}/approve", {})
+        seg = _safe_segment(name)
+        if seg is None:
+            return JSONResponse({"error": "invalid proposal name"}, status_code=400)
+        return await _post(f"/api/agents/proposals/{seg}/approve", {})
 
     @router.post("/proposals/{name}/reject")
     async def proposal_reject(name: str):
-        return await _post(f"/api/agents/proposals/{name}/reject", {})
+        seg = _safe_segment(name)
+        if seg is None:
+            return JSONResponse({"error": "invalid proposal name"}, status_code=400)
+        return await _post(f"/api/agents/proposals/{seg}/reject", {})
 
     @router.post("/brief/spawn")
     async def brief_spawn(body: dict):
@@ -94,7 +116,10 @@ def setup_agents_routes() -> APIRouter:
 
     @router.get("/runs/{run_id}")
     async def run_get(run_id: str):
-        return await _get(f"/api/runs/{run_id}")
+        seg = _safe_segment(run_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid run_id"}, status_code=400)
+        return await _get(f"/api/runs/{seg}")
 
     # --- Run terminal SSE passthrough (Phase 5 / P5-T4) ---
     @router.get("/runs/{run_id}/stream")
@@ -102,10 +127,14 @@ def setup_agents_routes() -> APIRouter:
         """Stream the panel's tool-calls.jsonl SSE through our origin so the
         EventSource in runTerminal.js stays same-origin. Forwards the upstream
         text/event-stream chunk-by-chunk."""
+        seg = _safe_segment(run_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid run_id"}, status_code=400)
+
         async def _relay():
             try:
                 async with httpx.AsyncClient(timeout=None) as client:
-                    async with client.stream("GET", f"{PANEL_BASE}/api/runs/{run_id}/stream") as r:
+                    async with client.stream("GET", f"{PANEL_BASE}/api/runs/{seg}/stream") as r:
                         async for chunk in r.aiter_bytes():
                             yield chunk
             except httpx.HTTPError as e:
