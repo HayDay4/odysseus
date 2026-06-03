@@ -327,6 +327,77 @@ def _parse_tool_code_block(raw: str) -> Optional[ToolBlock]:
     return None
 
 
+# Pattern 6: OpenAI-style function-call JSON — {"name": "web_search",
+# "arguments": {"query": "..."}}. This is what qwen2.5 and many Ollama models
+# emit natively (instead of the fenced ```web_search form), so without this they
+# print the call as text and the tool NEVER executes. We route each such object
+# through function_call_to_tool_block — the SAME converter used for native calls
+# and <invoke> — which returns None for anything that isn't a real tool, so a
+# stray JSON blob can't trigger an accidental execution.
+def _iter_json_objects(text: str):
+    """Yield (start, end, substr) for each top-level balanced {...} (string-aware)."""
+    depth = 0
+    start = -1
+    in_str = False
+    esc = False
+    for i, c in enumerate(text):
+        if in_str:
+            if esc:
+                esc = False
+            elif c == "\\":
+                esc = True
+            elif c == '"':
+                in_str = False
+            continue
+        if c == '"':
+            in_str = True
+        elif c == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif c == "}":
+            if depth > 0:
+                depth -= 1
+                if depth == 0 and start != -1:
+                    yield start, i + 1, text[start:i + 1]
+                    start = -1
+
+
+def _openai_call_spans(text: str):
+    """Return [(start, end, ToolBlock)] for OpenAI-style function-call JSON objects."""
+    out = []
+    if '"name"' not in text or ('"arguments"' not in text and '"parameters"' not in text):
+        return out
+    from src.tool_schemas import function_call_to_tool_block
+    for s, e, sub in _iter_json_objects(text):
+        if '"name"' not in sub:
+            continue
+        try:
+            obj = json.loads(sub)
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if not isinstance(obj, dict):
+            continue
+        # Some models wrap the call: {"type":"function","function":{name,arguments}}
+        call = obj.get("function") if isinstance(obj.get("function"), dict) else obj
+        name = call.get("name")
+        if not isinstance(name, str) or not name:
+            continue
+        args = call.get("arguments", call.get("parameters", {}))
+        if isinstance(args, str):
+            args_str = args
+        else:
+            try:
+                args_str = json.dumps(args)
+            except (TypeError, ValueError):
+                continue
+        block = function_call_to_tool_block(name, args_str) or \
+            function_call_to_tool_block(name.lower(), args_str)
+        if block:
+            out.append((s, e, block))
+    return out
+
+
 def parse_tool_blocks(text: str) -> List[ToolBlock]:
     """Extract executable tool blocks from LLM response text.
 
@@ -336,6 +407,7 @@ def parse_tool_blocks(text: str) -> List[ToolBlock]:
     3. XML-style <tool_call>/<invoke> blocks
     4. <tool_code> blocks (MiniMax-M2.5 style)
     5. DeepSeek DSML markup (normalized to <invoke> first)
+    6. OpenAI-style {"name","arguments"} JSON (qwen / most Ollama models) — fallback
     """
     blocks = []
 
@@ -391,6 +463,12 @@ def parse_tool_blocks(text: str) -> List[ToolBlock]:
             if block:
                 blocks.append(block)
 
+    # Pattern 6 (fallback): OpenAI-style {"name","arguments"} function-call JSON.
+    # Only when no established format matched, so it never competes with them.
+    if not blocks:
+        for _s, _e, block in _openai_call_spans(text):
+            blocks.append(block)
+
     return blocks
 
 
@@ -405,5 +483,11 @@ def strip_tool_blocks(text: str) -> str:
     cleaned = _TOOL_CODE_RE.sub('', cleaned)
     # Strip bare <invoke> blocks not wrapped in <tool_call>
     cleaned = re.sub(r'<invoke\s+name=["\'].*?</invoke>', '', cleaned, flags=re.DOTALL | re.IGNORECASE)
+    # Strip executed OpenAI-style {"name","arguments"} JSON calls (Pattern 6) so the
+    # raw call doesn't leak to the user as a code block. Remove right-to-left to keep
+    # earlier spans valid, then collapse the now-empty enclosing fence.
+    for s, e, _blk in reversed(_openai_call_spans(cleaned)):
+        cleaned = cleaned[:s] + cleaned[e:]
+    cleaned = re.sub(r'```(?:json|tool_call|tool_code)?\s*```', '', cleaned)
     cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
     return cleaned.strip()
