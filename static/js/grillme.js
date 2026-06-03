@@ -22,8 +22,10 @@ import workshopModule from './workshop.js';
 
 const GRILL_PRESET = 'grill_me';
 let API = window.location.origin;
+let _intakeActive = false;
 
 export function initGrillme(apiBase) { if (apiBase) API = apiBase; }
+export function isIntakeActive() { return _intakeActive; }
 
 async function _getJSON(path) {
   try {
@@ -32,10 +34,34 @@ async function _getJSON(path) {
   } catch { return null; }
 }
 
+// Privacy wall: intake is meant to run on the LOCAL model so the messy/sensitive
+// interrogation never leaves the box. If the session is on a remote endpoint, the
+// whole conversation egresses to a cloud provider — so we warn before proceeding.
+function _isLocalEndpoint() {
+  const url = (sessionModule.getCurrentEndpointUrl && sessionModule.getCurrentEndpointUrl()) || '';
+  if (!url) return true;   // empty → app default (local ollama)
+  return /(^|\/\/)(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|host\.docker\.internal)\b/i.test(url)
+    || url.includes('11434');
+}
+
+function _confirmRemoteIntake(action) {
+  const model = (sessionModule.getCurrentModel && sessionModule.getCurrentModel()) || 'this model';
+  return window.confirm(
+    `Privacy warning: this chat is on a NON-LOCAL model (${model}).\n\n` +
+    `Grill-me intake is meant to stay private on the local model — on a remote model your ` +
+    `${action} leaves your machine to a cloud provider.\n\nProceed anyway?`);
+}
+
 // ── 1. start the interrogation ──────────────────────────────────────────────
 export async function startIntake(projectSlug) {
+  if (!_isLocalEndpoint() && !_confirmRemoteIntake('whole interrogation')) {
+    _toast('Grill-me cancelled — switch to the local model (qwen) for private intake.');
+    return '';
+  }
   const slug = (projectSlug || '').trim();
   if (presetsModule.setActivePreset) presetsModule.setActivePreset(GRILL_PRESET);
+  _intakeActive = true;
+  _renderBar();
 
   const preamble = slug ? await _existingWorkPreamble(slug) : '';
   const input = uiModule.el && uiModule.el('message');
@@ -47,6 +73,85 @@ export async function startIntake(projectSlug) {
     input.dispatchEvent(new Event('input', { bubbles: true }));
   }
   return preamble;
+}
+
+// ── intake bar (indicator + ship CTA), deactivation ─────────────────────────
+// One small chip near the composer. While intake runs it shows "Grill-me intake"
+// with a stop ✕; when the latest reply contains a handoff it flips to a green
+// "Brief ready — Review & ship →" call-to-action so you never have to remember
+// the /grill-me handoff command.
+function _briefReady() {
+  return _intakeActive && document.getElementById('grillme-bar')?.dataset.ready === '1';
+}
+
+function _ensureBar() {
+  let bar = document.getElementById('grillme-bar');
+  if (bar) return bar;
+  const anchor = document.getElementById('character-indicator-btn');
+  const host = anchor && anchor.parentElement;
+  if (!host) return null;
+  bar = document.createElement('button');
+  bar.type = 'button';
+  bar.id = 'grillme-bar';
+  bar.className = 'input-icon-btn tool-indicator';
+  bar.style.display = 'none';
+  host.insertBefore(bar, anchor);
+  bar.addEventListener('click', (e) => {
+    // Click on the ✕ region stops intake; click on the body ships (when ready).
+    if (e.target.closest('.grillme-x')) { deactivateIntake(); return; }
+    if (_briefReady()) produceHandoff();
+  });
+  return bar;
+}
+
+function _renderBar() {
+  const bar = _ensureBar();
+  if (!bar) return;
+  if (!_intakeActive) { bar.style.display = 'none'; return; }
+  const ready = bar.dataset.ready === '1';
+  bar.style.display = '';
+  bar.classList.toggle('grillme-ready', ready);
+  bar.title = ready ? 'Brief ready — click to review & ship' : 'Grill-me intake active — click ✕ to stop';
+  const label = ready ? 'Review &amp; ship brief →' : 'Grill-me intake';
+  bar.innerHTML =
+    `<span style="font-size:11px;margin:0 2px;white-space:nowrap;">${label}</span>` +
+    `<svg class="tool-indicator-x grillme-x" width="10" height="10" viewBox="0 0 24 24" fill="none" ` +
+    `stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/>` +
+    `<line x1="18" y1="6" x2="6" y2="18"/></svg>`;
+}
+
+export function deactivateIntake() {
+  _intakeActive = false;
+  const bar = document.getElementById('grillme-bar');
+  if (bar) { bar.dataset.ready = ''; bar.style.display = 'none'; }
+  if (presetsModule.getSelectedPreset && presetsModule.getSelectedPreset() === GRILL_PRESET
+      && presetsModule.setActivePreset) {
+    presetsModule.setActivePreset(null);
+  }
+}
+
+// Cheap client-side check: does this reply look like a handoff brief? (The server
+// re-parses authoritatively on produceHandoff.)
+function _looksLikeHandoff(text) {
+  if (!text) return false;
+  const t = String(text);
+  if (!t.includes('{') || !t.includes('}')) return false;
+  const keys = ['project_slug', 'acceptance_criteria', 'suggested_profile',
+    'suggested_decomposition', 'notes_for_workforce'];
+  return keys.filter((k) => t.includes(`"${k}"`)).length >= 2;
+}
+
+// Called by chat.js after each assistant turn settles. Flips the bar to the
+// ship CTA when a handoff appears in the latest reply.
+export async function onAssistantTurnComplete() {
+  if (!_intakeActive) return;
+  const sid = sessionModule.getCurrentSessionId && sessionModule.getCurrentSessionId();
+  if (!sid) return;
+  const text = await _lastAssistantText(sid);
+  const bar = _ensureBar();
+  if (!bar) return;
+  bar.dataset.ready = _looksLikeHandoff(text) ? '1' : '';
+  _renderBar();
 }
 
 // Phase 2 — compact existing-work summary from the bridge (active runs + kanban).
@@ -112,6 +217,8 @@ export async function produceHandoff() {
 
   // Hand the scrubbed brief to the cockpit (Opus plan-mode review happens there).
   await workshopModule.openWorkshopWithBrief({ parsed: res.parsed, scrubbed: res.scrubbed });
+  // Brief shipped — intake is done; return the chat to a normal model.
+  deactivateIntake();
 }
 
 async function _lastAssistantText(sid) {
@@ -148,4 +255,7 @@ function _toast(msg) {
   else console.log('[grill-me]', msg);   // eslint-disable-line no-console
 }
 
-export default { initGrillme, startIntake, produceHandoff };
+export default {
+  initGrillme, startIntake, produceHandoff,
+  deactivateIntake, isIntakeActive, onAssistantTurnComplete,
+};

@@ -5388,6 +5388,11 @@ async function _cmdGrillMe(args, ctx) {
     grillmeModule.produceHandoff();
     return true;
   }
+  if (sub === 'stop' || sub === 'off' || sub === 'cancel') {
+    grillmeModule.deactivateIntake();
+    slashReply('Grill-me intake stopped — back to a normal chat.');
+    return true;
+  }
   const project = args.join(' ').trim();
   await grillmeModule.startIntake(project);
   slashReply(

@@ -5014,6 +5014,10 @@ body.bg-pattern-sparkles {
     .ck-detail-head .ck-run-id { font-size: 13px; color: var(--ck-ink); }
     .ck-plan-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px 10px;
       border: 1px solid var(--ck-line); border-radius: 8px; background: var(--ck-accent-soft, rgba(120,120,200,0.08)); font-size: 12px; }
+    /* Grill-me intake bar: amber while interrogating, green when a brief is ready to ship. */
+    #grillme-bar { display: inline-flex; align-items: center; gap: 2px; border-color: var(--amber, #d9a441); color: var(--amber, #d9a441); }
+    #grillme-bar.grillme-ready { border-color: var(--green, #3fae6b); color: var(--green, #3fae6b); background: rgba(63,174,107,0.10); animation: grillmePulse 1.6s ease-in-out infinite; }
+    @keyframes grillmePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.72; } }
     .ck-detail-tabs { display: flex; gap: 2px; margin-bottom: 12px; border-bottom: 1px solid var(--ck-line); }
     .ck-dtab {
       background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--ck-muted);

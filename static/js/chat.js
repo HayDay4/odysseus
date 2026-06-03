@@ -2712,6 +2712,9 @@ import createResearchSynapse from './researchSynapse.js';
       // Streaming done — let screen readers announce the settled response.
       const _chatLogDone = document.getElementById('chat-history');
       if (_chatLogDone) _chatLogDone.setAttribute('aria-busy', 'false');
+      // Grill-me: if intake is active, flip the bar to "ship brief" when the
+      // model's settled reply contains a handoff (no-op otherwise).
+      try { grillmeModule.onAssistantTurnComplete(); } catch (_) { /* non-fatal */ }
       // Always clean up research tracking regardless of background state
       _researchingStreamIds.delete(streamSessionId);
       if (_researchingStreamIds.size === 0) {
