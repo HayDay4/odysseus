@@ -38,6 +38,13 @@ def test_function_wrapper_form():
     assert _types(t) == [("bash", "pwd")]
 
 
+def test_web_fetch_yields_bare_url():
+    # Regression: the converter lacked a web_fetch branch, so qwen's web_fetch
+    # passed {"url":…} instead of the URL → broken for local models.
+    t = '```\n{"name":"web_fetch","arguments":{"url":"https://example.com/docs"}}\n```'
+    assert _types(t) == [("web_fetch", "https://example.com/docs")]
+
+
 def test_established_fenced_format_still_wins():
     assert _types('```web_search\nhello world\n```') == [("web_search", "hello world")]
 
