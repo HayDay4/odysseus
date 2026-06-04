@@ -4815,7 +4815,6 @@ body.bg-pattern-sparkles {
       --ck-muted:     color-mix(in srgb, var(--fg) 62%, transparent);
       --ck-faint:     color-mix(in srgb, var(--fg) 42%, transparent);
       --ck-tint:      color-mix(in srgb, var(--ck-accent) 13%, transparent);
-      --ck-tint-2:    color-mix(in srgb, var(--ck-accent) 22%, transparent);
       --ck-warn: var(--warn, #f0ad4e);
       --ck-danger: var(--red, #e06c75);
       --ck-ok: var(--green, #5bb98c);
