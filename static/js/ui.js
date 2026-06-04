@@ -664,6 +664,65 @@ export function styledConfirm(message, { confirmText = 'Confirm', cancelText = '
 }
 
 /**
+ * Styled one-button alert — drop-in replacement for window.alert().
+ * Returns a Promise<void> that resolves when dismissed. Reuses the confirm box
+ * with the cancel button hidden so it stays on-theme (no OS chrome).
+ */
+export function styledAlert(message, { title = 'Notice', okText = 'OK', danger = false } = {}) {
+  return new Promise(resolve => {
+    let overlay = document.getElementById('styled-alert-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'styled-alert-overlay';
+      overlay.className = 'modal';
+      overlay.innerHTML =
+        '<div class="modal-content styled-confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="styled-alert-title" aria-describedby="styled-alert-msg">' +
+          '<div class="modal-header"><h4 id="styled-alert-title"></h4></div>' +
+          '<div class="modal-body"><p id="styled-alert-msg"></p></div>' +
+          '<div class="modal-footer">' +
+            '<button id="styled-alert-ok"></button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+    }
+    const titleEl = document.getElementById('styled-alert-title');
+    const msgEl = document.getElementById('styled-alert-msg');
+    const okBtn = document.getElementById('styled-alert-ok');
+    titleEl.textContent = title;
+    msgEl.textContent = message;
+    okBtn.textContent = okText;
+    okBtn.className = danger ? 'confirm-btn confirm-btn-danger' : 'confirm-btn confirm-btn-primary';
+
+    const _prevFocus = document.activeElement;
+    overlay.classList.remove('hidden');
+    overlay.style.display = '';
+
+    function cleanup() {
+      overlay.classList.add('hidden');
+      overlay.style.display = 'none';
+      okBtn.removeEventListener('click', onOk);
+      overlay.removeEventListener('click', onBackdrop);
+      document.removeEventListener('keydown', onKey);
+      try { _prevFocus && _prevFocus.focus && _prevFocus.focus(); } catch {}
+      resolve();
+    }
+    function onOk() { cleanup(); }
+    function onBackdrop(e) { if (e.target === overlay) cleanup(); }
+    function onKey(e) {
+      if (e.key === 'Escape' || e.key === 'Enter') {
+        e.preventDefault(); e.stopPropagation();
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+        cleanup();
+      }
+    }
+    okBtn.addEventListener('click', onOk);
+    overlay.addEventListener('click', onBackdrop);
+    document.addEventListener('keydown', onKey);
+    okBtn.focus();
+  });
+}
+
+/**
  * Styled text-input prompt — drop-in replacement for window.prompt().
  * Resolves to the trimmed string the user typed, or null on Cancel / Escape / backdrop.
  */

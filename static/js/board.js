@@ -15,6 +15,8 @@
  * counts back via loadBoard() so the strip stays in sync.
  */
 import { aiosGet, aiosPost, aiosPatch, esc } from './aiosShell.js';
+import { ic } from './icons.js';
+import { styledConfirm, styledAlert } from './ui.js';
 import { mdToHtml } from './markdown.js';
 
 const COLS = [
@@ -24,19 +26,6 @@ const COLS = [
   { key: 'in_review', label: 'In review' },
   { key: 'done', label: 'Done' },
 ];
-
-// Inline SVG icons (stroke=currentColor) — matches workshop.js's set, no emoji.
-const _IC = {
-  brain: '<path d="M9 3a3 3 0 0 0-3 3 3 3 0 0 0-1.5 5.6A3 3 0 0 0 6 18a3 3 0 0 0 6 .5V4.5A3 3 0 0 0 9 3z"/><path d="M15 3a3 3 0 0 1 3 3 3 3 0 0 1 1.5 5.6A3 3 0 0 1 18 18a3 3 0 0 1-6 .5"/>',
-  merge: '<circle cx="6" cy="6" r="2.4"/><circle cx="6" cy="18" r="2.4"/><circle cx="18" cy="9" r="2.4"/><path d="M6 8.4v7.2M18 11.2c0 3-4 2.6-6 4.4"/>',
-  check: '<path d="M5 13l4 4L19 7"/>',
-  link: '<path d="M9 15l6-6"/><path d="M11 6l1-1a4 4 0 0 1 6 6l-1 1"/><path d="M13 18l-1 1a4 4 0 0 1-6-6l1-1"/>',
-  plus: '<path d="M12 5v14M5 12h14"/>',
-};
-function ic(name) {
-  return `<svg class="ck-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-    stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${_IC[name] || ''}</svg>`;
-}
 
 const B = {
   loaded: false,
@@ -182,7 +171,7 @@ function renderColumn(col) {
   }
   return `<div class="ck-kcol" data-col="${col.key}">
     <div class="ck-kcol-head"><span class="ck-kcol-label">${esc(col.label)}</span><span class="ck-kcol-n">${issues.length}</span></div>
-    <div class="ck-kcol-body">${cards || '<p class="ckb-col-empty">—</p>'}${extra}</div>
+    <div class="ck-kcol-body">${cards || `<p class="ckb-col-empty">No ${esc(col.label.toLowerCase())} issues</p>`}${extra}</div>
   </div>`;
 }
 
@@ -411,7 +400,7 @@ async function moveIssue(id, status) {
     issue.status = prev;                 // rollback
     notifyChange();
     rerender();
-    window.alert(`Move failed: ${(res && (res.error || JSON.stringify(res))) || 'unknown'}`);
+    await styledAlert(`Move failed: ${(res && (res.error || JSON.stringify(res))) || 'unknown'}`, { title: 'Move failed', danger: true });
   } else {
     await loadBoard();
     notifyChange();
@@ -420,10 +409,10 @@ async function moveIssue(id, status) {
 }
 
 async function mergeIssue(id) {
-  if (!window.confirm(`Squash-merge the PR for "${id}" and mark it done?`)) return;
+  if (!await styledConfirm(`Squash-merge the PR for "${id}" and mark it done?`, { confirmText: 'Merge', cancelText: 'Cancel' })) return;
   const res = await aiosPost(`/issues/${encodeURIComponent(id)}/merge`, {});
   if (!res || res.error || res.ok === false) {
-    window.alert(`Merge failed: ${(res && (res.error || JSON.stringify(res))) || 'unknown'}`);
+    await styledAlert(`Merge failed: ${(res && (res.error || JSON.stringify(res))) || 'unknown'}`, { title: 'Merge failed', danger: true });
     return;
   }
   await loadBoard();
@@ -464,9 +453,9 @@ async function toggleProposal(name) {
 
 async function actProposal(name, action) {
   const verb = action === 'approve' ? 'Approve' : 'Reject';
-  if (!window.confirm(`${verb} proposal "${name}"?`)) return;
+  if (!await styledConfirm(`${verb} proposal "${name}"?`, { confirmText: verb, danger: action === 'reject' })) return;
   const res = await aiosPost(`/proposals/${encodeURIComponent(name)}/${action}`, {});
-  if (res && res.error) { window.alert(`Failed: ${res.error}`); return; }
+  if (res && res.error) { await styledAlert(`Failed: ${res.error}`, { title: `${verb} failed`, danger: true }); return; }
   B.propExpanded.delete(name);
   await loadBoard();
   notifyChange();
@@ -475,10 +464,10 @@ async function actProposal(name, action) {
 
 async function answerQuestion(qid) {
   const text = (B.answerDraft[qid] || '').trim();
-  if (!text) { window.alert('Write an answer first.'); return; }
+  if (!text) { await styledAlert('Write an answer first.', { title: 'Answer required' }); return; }
   const res = await aiosPost(`/questions/${encodeURIComponent(qid)}/answer`, { answer: text });
   if (!res || res.error || res.ok === false) {
-    window.alert(`Answer failed: ${(res && (res.error || JSON.stringify(res))) || 'unknown'}`);
+    await styledAlert(`Answer failed: ${(res && (res.error || JSON.stringify(res))) || 'unknown'}`, { title: 'Answer failed', danger: true });
     return;
   }
   delete B.answerDraft[qid];

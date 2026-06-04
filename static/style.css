@@ -4818,6 +4818,20 @@ body.bg-pattern-sparkles {
       --ck-tint-2:    color-mix(in srgb, var(--ck-accent) 22%, transparent);
       --ck-warn: var(--warn, #f0ad4e);
       --ck-danger: var(--red, #e06c75);
+      --ck-ok: var(--green, #5bb98c);
+      /* Structural scales — theme-independent (carry no colour), so they hold
+         across every Odysseus theme. Single source of truth for the cockpit. */
+      --ck-r-sm: 7px; --ck-r-md: 9px; --ck-r-lg: 12px; --ck-r-pill: 999px;
+      --ck-gap-xs: 6px; --ck-gap-sm: 9px; --ck-gap-md: 12px; --ck-gap-lg: 16px;
+      --ck-t-eyebrow: 11px; --ck-t-sm: 12px; --ck-t-body: 13px; --ck-t-h2: 15px; --ck-t-h1: 20px;
+      --ck-shadow-card: 0 1px 2px rgba(0,0,0,0.10), 0 4px 14px rgba(0,0,0,0.16);
+    }
+    /* Keyboard focus is a first-class state — the global default outline does not
+       match the cockpit. One ring for every interactive cockpit control. */
+    #aios-cockpit-modal :is(.ck-btn, .ck-iconbtn, .ck-tab, .ck-dtab, .ck-proj,
+      .ck-run, .ck-seg, .ckb-card-head, .ckb-status, .ckb-deep, .ckb-prop-head,
+      .ck-mode):focus-visible {
+      outline: 2px solid var(--ck-accent); outline-offset: 2px;
     }
     .ck-modal-content {
       width: min(1440px, 96vw); max-width: none;
@@ -4997,7 +5011,7 @@ body.bg-pattern-sparkles {
     .ck-run.sel { background: var(--ck-surface-2); border-color: var(--ck-line); }
     .ck-run-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ck-faint); flex: 0 0 auto; }
     .ck-run-dot.live { background: var(--ck-accent); box-shadow: 0 0 7px var(--ck-accent); }
-    .ck-run-dot.completed { background: #5bb98c; }
+    .ck-run-dot.completed { background: var(--ck-ok); }
     .ck-run-dot.failed, .ck-run-dot.cancelled { background: var(--ck-danger); }
     .ck-run-id { font-family: var(--mono, monospace); color: var(--ck-muted); }
     .ck-run.sel .ck-run-id { color: var(--ck-ink); }
@@ -5013,10 +5027,11 @@ body.bg-pattern-sparkles {
     .ck-detail-head { display: flex; align-items: center; gap: 7px; margin-bottom: 12px; }
     .ck-detail-head .ck-run-id { font-size: 13px; color: var(--ck-ink); }
     .ck-plan-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px 10px;
-      border: 1px solid var(--ck-line); border-radius: 8px; background: var(--ck-accent-soft, rgba(120,120,200,0.08)); font-size: 12px; }
-    /* Grill-me intake bar: amber while interrogating, green when a brief is ready to ship. */
-    #grillme-bar { display: inline-flex; align-items: center; gap: 2px; border-color: var(--amber, #d9a441); color: var(--amber, #d9a441); }
-    #grillme-bar.grillme-ready { border-color: var(--green, #3fae6b); color: var(--green, #3fae6b); background: rgba(63,174,107,0.10); animation: grillmePulse 1.6s ease-in-out infinite; }
+      border: 1px solid var(--ck-line); border-radius: 8px; background: var(--ck-tint); font-size: 12px; }
+    /* Grill-me intake bar: amber while interrogating, green when a brief is ready to ship.
+       Theme-derived (--ck-warn / --ck-ok) with literal fallbacks for any out-of-scope render. */
+    #grillme-bar { display: inline-flex; align-items: center; gap: 2px; border-color: var(--ck-warn, var(--warn, #d9a441)); color: var(--ck-warn, var(--warn, #d9a441)); }
+    #grillme-bar.grillme-ready { border-color: var(--ck-ok, var(--green, #3fae6b)); color: var(--ck-ok, var(--green, #3fae6b)); background: color-mix(in srgb, var(--ck-ok, #3fae6b) 10%, transparent); animation: grillmePulse 1.6s ease-in-out infinite; }
     @keyframes grillmePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.72; } }
     .ck-detail-tabs { display: flex; gap: 2px; margin-bottom: 12px; border-bottom: 1px solid var(--ck-line); }
     .ck-dtab {
@@ -5086,7 +5101,7 @@ body.bg-pattern-sparkles {
     .ckb-prio.p-hi { background: color-mix(in srgb, var(--ck-danger) 20%, transparent); color: var(--ck-danger); }
     .ckb-prio.p-mid { background: color-mix(in srgb, var(--ck-warn) 18%, transparent); color: var(--ck-warn); }
     .ckb-prio.p-lo { background: var(--ck-surface-2); color: var(--ck-faint); }
-    .ckb-card-title { font-size: 12.5px; font-weight: 600; line-height: 1.35; color: var(--ck-ink); word-break: break-word; }
+    .ckb-card-title { font-size: var(--ck-t-body); font-weight: 600; line-height: 1.35; color: var(--ck-ink); word-break: break-word; }
     .ckb-card-meta { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
     .ckb-chip { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--ck-tint); color: var(--ck-accent); }
     .ckb-chip.ghost { background: var(--ck-surface-2); color: var(--ck-muted); }
@@ -5120,13 +5135,13 @@ body.bg-pattern-sparkles {
     .ckb-prop, .ckb-q { background: var(--ck-surface); border: 1px solid var(--ck-line-2); border-radius: 10px; margin-bottom: 8px; }
     .ckb-prop.open { border-color: color-mix(in srgb, var(--ck-accent) 45%, transparent); }
     .ckb-prop-head { display: flex; align-items: center; gap: 9px; padding: 9px 11px; cursor: pointer; }
-    .ckb-prop-name { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .ckb-prop-name { font-size: var(--ck-t-body); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
     .ckb-prop-body { padding: 0 11px 11px; display: flex; flex-direction: column; gap: 9px; }
     .ckb-prop-prev { display: none; }
-    .ckb-prop-md, .ckb-deep-pane .aios-md { font-size: 12.5px; line-height: 1.5; max-height: 320px; overflow-y: auto; }
+    .ckb-prop-md, .ckb-deep-pane .aios-md { font-size: var(--ck-t-body); line-height: 1.5; max-height: 320px; overflow-y: auto; }
 
     .ckb-q-head { display: flex; align-items: flex-start; gap: 9px; padding: 10px 11px 6px; }
-    .ckb-q-text { font-size: 12.5px; line-height: 1.4; flex: 1; }
+    .ckb-q-text { font-size: var(--ck-t-body); line-height: 1.4; flex: 1; }
     .ckb-answer { width: calc(100% - 22px); margin: 0 11px; box-sizing: border-box; height: auto;
       background: var(--panel); color: inherit; border: 1px solid var(--ck-line-2); border-radius: 8px;
       font-family: inherit; font-size: 12px; padding: 7px 9px; resize: vertical; }
@@ -5135,7 +5150,7 @@ body.bg-pattern-sparkles {
 
     /* Deep-review (Opus) result pane */
     .ckb-deep-pane { background: var(--ck-tint); border: 1px solid color-mix(in srgb, var(--ck-accent) 32%, transparent);
-      border-radius: 10px; padding: 11px 13px; font-size: 12.5px; display: flex; flex-direction: column; gap: 7px; }
+      border-radius: 10px; padding: 11px 13px; font-size: var(--ck-t-body); display: flex; flex-direction: column; gap: 7px; }
     .ckb-deep-pane.error { background: color-mix(in srgb, var(--ck-danger) 12%, transparent); border-color: color-mix(in srgb, var(--ck-danger) 40%, transparent); color: var(--ck-danger); }
     .ckb-deep-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--ck-accent); text-transform: uppercase; letter-spacing: 0.05em; }
     .ckb-deep-h { margin: 4px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ck-faint); font-weight: 700; }
@@ -5158,11 +5173,11 @@ body.bg-pattern-sparkles {
     .ck-brain-modes { /* inherits .ck-modes flex layout */ }
 
     .ck-plan-note {
-      display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ck-muted);
+      display: flex; align-items: center; gap: 8px; font-size: var(--ck-t-body); color: var(--ck-muted);
       background: var(--ck-surface); border: 1px solid var(--ck-line); border-radius: 9px; padding: 10px 12px;
     }
     .ck-plan-note code { color: var(--ck-accent); font-family: var(--mono, monospace); }
-    .ck-plan-head { font-size: 12.5px; color: var(--ck-muted); margin: 2px 0 2px; }
+    .ck-plan-head { font-size: var(--ck-t-body); color: var(--ck-muted); margin: 2px 0 2px; }
     .ck-plan-head strong { color: var(--ck-ink); }
 
     .ck-subtask { background: var(--ck-surface); border: 1px solid var(--ck-line-2); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 7px; }
@@ -5235,6 +5250,17 @@ body.bg-pattern-sparkles {
       --a-faint:     color-mix(in srgb, var(--fg) 42%, transparent);
       --a-tint:      color-mix(in srgb, var(--a-accent) 13%, transparent);
       --a-danger: var(--red, #e06c75);
+      --a-ok: var(--green, #5bb98c);
+    }
+    /* Keyboard focus ring for the Classic-views glance modals. */
+    #aios-roster-modal, #aios-org-modal, #aios-proposals-modal, #aios-inbox-modal,
+    #aios-kanban-modal, #aios-cost-modal, #aios-runsummary-modal {
+      --a-focus: var(--a-accent);
+    }
+    :is(#aios-roster-modal, #aios-org-modal, #aios-proposals-modal, #aios-inbox-modal,
+      #aios-kanban-modal, #aios-cost-modal, #aios-runsummary-modal)
+      :is(.aios-pill, .aios-card-head, button):focus-visible {
+      outline: 2px solid var(--a-focus); outline-offset: 2px;
     }
     #aios-proposals-modal .aios-modal-content,
     #aios-roster-modal .aios-modal-content,
@@ -5404,7 +5430,7 @@ body.bg-pattern-sparkles {
       font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700;
       padding: 2px 9px; border-radius: 999px; border: 1px solid transparent;
     }
-    .rs-status.done { color: #5bb98c; background: color-mix(in srgb, #5bb98c 14%, transparent); }
+    .rs-status.done { color: var(--a-ok); background: color-mix(in srgb, var(--a-ok) 14%, transparent); }
     .rs-status.failed { color: var(--a-danger); background: color-mix(in srgb, var(--a-danger) 14%, transparent); }
     .rs-status.killed { color: var(--a-faint); background: var(--a-surface-2); }
     .rs-status.active { color: var(--a-accent); background: var(--a-tint); }

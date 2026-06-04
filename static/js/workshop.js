@@ -17,6 +17,8 @@
  * refresh the rail / WORK / Decisions without clobbering what you're typing.
  */
 import { aiosGet, aiosPost, esc } from './aiosShell.js';
+import { ic } from './icons.js';
+import { styledConfirm, styledAlert } from './ui.js';
 import { openRunTerminal } from './runTerminal.js';
 import agentsHubModule from './agentsHub.js';
 import boardModule from './board.js';
@@ -26,23 +28,6 @@ const MODE_HELP = {
   think: 'Opus + thinking · ~$0.05 · ~20s',
   ensemble: 'Sonnet + Hermes → Opus · ~$0.10 · ~30s',
 };
-
-// ── Inline SVG icon set (stroke=currentColor) — no emoji, theme-tinted ──────
-const _IC = {
-  close: '<path d="M6 6l12 12M18 6L6 18"/>',
-  arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
-  play: '<path d="M8 5l11 7-11 7z" fill="currentColor" stroke="none"/>',
-  cancel: '<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>',
-  branch: '<circle cx="6" cy="6" r="2.4"/><circle cx="6" cy="18" r="2.4"/><circle cx="18" cy="7" r="2.4"/><path d="M6 8.4v7.2M18 9.4c0 4.2-5.4 2.4-6 5.6"/>',
-  brain: '<path d="M9 3a3 3 0 0 0-3 3 3 3 0 0 0-1.5 5.6A3 3 0 0 0 6 18a3 3 0 0 0 6 .5V4.5A3 3 0 0 0 9 3z"/><path d="M15 3a3 3 0 0 1 3 3 3 3 0 0 1 1.5 5.6A3 3 0 0 1 18 18a3 3 0 0 1-6 .5"/>',
-  bolt: '<path d="M13 3L5 13h5l-1 8 8-10h-5z" fill="currentColor" stroke="none"/>',
-  grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
-};
-function ic(name, cls) {
-  return `<svg class="ck-ic ${cls || ''}" viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"
-    aria-hidden="true">${_IC[name] || ''}</svg>`;
-}
 
 const S = {
   open: false,
@@ -758,12 +743,13 @@ async function doImplement() {
     if (res.run_id) selectRun(res.run_id);
     renderSpawn();
   } else {
-    alert('Implementation spawn failed: ' + ((res && (res.error || JSON.stringify(res))) || 'unknown'));
+    await styledAlert('Implementation spawn failed: ' + ((res && (res.error || JSON.stringify(res))) || 'unknown'),
+      { title: 'Spawn failed', danger: true });
   }
 }
 
 async function doCancel(rid) {
-  if (!confirm(`Cancel run ${rid}? Sends SIGTERM.`)) return;
+  if (!await styledConfirm(`Cancel run ${rid}? Sends SIGTERM.`, { confirmText: 'Cancel run', cancelText: 'Keep running', danger: true })) return;
   await aiosPost(`/runs/${encodeURIComponent(rid)}/cancel`, {});
   await loadRuns(); renderRail(); renderWork();
 }
@@ -771,7 +757,8 @@ async function doCancel(rid) {
 async function doBackfillPr(rid) {
   const res = await aiosPost(`/runs/${encodeURIComponent(rid)}/backfill-pr`, {});
   const url = res && res.pr_url;
-  alert(url ? `PR: ${url}` : `No PR found${res && res.error ? ` (${res.error})` : ''}.`);
+  await styledAlert(url ? `PR: ${url}` : `No PR found${res && res.error ? ` (${res.error})` : ''}.`,
+    { title: url ? 'Pull request' : 'No PR found' });
 }
 
 // ── Tabs + poll ────────────────────────────────────────────────────────────
