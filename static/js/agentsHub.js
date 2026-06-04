@@ -6,7 +6,6 @@
 import { createAiosModal, esc } from './aiosShell.js';
 import rosterModule from './agentsRoster.js';
 import orgModule from './org.js';
-import proposalsModule from './proposals.js';
 import inboxModule from './inbox.js';
 import runsKanbanModule from './runsKanban.js';
 
@@ -60,11 +59,12 @@ async function _startGrillme() {
   _grillPicker.open();
 }
 // Brief/Spawn was dropped — the cockpit Workshop tab's Direct-launch supersedes it.
+// Proposals was dropped — the Board tab's proposals rail (full detail + deep-review)
+// supersedes the standalone modal.
 const TILES = [
   { icon: 'grill', label: 'New brief (/grill-me)', sub: 'local intake → cockpit', open: _startGrillme },
   { icon: 'roster', label: 'Agents Roster', sub: 'budgets & cost drill-down', open: () => rosterModule.openRoster() },
   { icon: 'org', label: 'Org Tree', sub: 'reporting lines', open: () => orgModule.openOrg() },
-  { icon: 'proposals', label: 'Proposals', sub: 'Hermes advisories', open: () => proposalsModule.openProposals() },
   { icon: 'inbox', label: 'Inbox', sub: 'decisions & tickets', open: () => inboxModule.openInbox() },
   { icon: 'runs', label: 'Runs', sub: 'kanban + live terminal', open: () => runsKanbanModule.openRunsKanban() },
 ];
