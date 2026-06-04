@@ -6,8 +6,6 @@
 import { createAiosModal, esc } from './aiosShell.js';
 import rosterModule from './agentsRoster.js';
 import orgModule from './org.js';
-import inboxModule from './inbox.js';
-import runsKanbanModule from './runsKanban.js';
 
 // Minimal inline SVG glyphs (stroke=currentColor) — keep parity with the
 // cockpit's icon language instead of emoji.
@@ -58,15 +56,16 @@ async function _startGrillme() {
   });
   _grillPicker.open();
 }
-// Brief/Spawn was dropped — the cockpit Workshop tab's Direct-launch supersedes it.
-// Proposals was dropped — the Board tab's proposals rail (full detail + deep-review)
-// supersedes the standalone modal.
+// "Classic views" is now slimmed to the surfaces with NO cockpit home of their
+// own (Phase 2 T7): the grill-me intake + roster + org. Superseded + removed:
+//   Brief/Spawn  → cockpit Workshop Direct-launch
+//   Proposals    → cockpit Board "Advisory (Hermes)" rail
+//   Inbox        → cockpit [Inbox] tab (governance/approvals feed)
+//   Runs         → cockpit Workshop WORK list + run detail (/runs routes here)
 const TILES = [
   { icon: 'grill', label: 'New brief (/grill-me)', sub: 'local intake → cockpit', open: _startGrillme },
   { icon: 'roster', label: 'Agents Roster', sub: 'budgets & cost drill-down', open: () => rosterModule.openRoster() },
   { icon: 'org', label: 'Org Tree', sub: 'reporting lines', open: () => orgModule.openOrg() },
-  { icon: 'inbox', label: 'Inbox', sub: 'decisions & tickets', open: () => inboxModule.openInbox() },
-  { icon: 'runs', label: 'Runs', sub: 'kanban + live terminal', open: () => runsKanbanModule.openRunsKanban() },
 ];
 
 function _svg(name) {

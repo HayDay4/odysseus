@@ -22,6 +22,8 @@ import { styledConfirm, styledAlert } from './ui.js';
 import { openRunTerminal } from './runTerminal.js';
 import agentsHubModule from './agentsHub.js';
 import boardModule from './board.js';
+import inboxTabModule from './inboxTab.js';
+import schedulesModule from './schedules.js';
 
 const MODE_HELP = {
   quick: 'Sonnet 4.6 · ~$0.003 · ~10s',
@@ -388,7 +390,8 @@ function renderBrainResult() {
   const brainName = esc(S.manager ? S.manager.manager.toUpperCase() : 'Brain');
   if (S.brainMode === 'orchestrate' && S.managerRunId) {
     el.innerHTML = `<div class="ck-plan-note">${ic('brain')} ${brainName} is orchestrating in
-      <code>${esc(S.managerRunId)}</code> — watch it in the run detail; review the aggregated changes when it finishes.</div>`;
+      <code>${esc(S.managerRunId)}</code> — watch it in the run detail; its delegated child runs
+      aggregate under the <strong>Children</strong> tab there as they spawn.</div>`;
     return;
   }
   if (S.planError) { el.innerHTML = `<div class="ck-error"><strong>Plan unavailable.</strong> <pre>${esc(S.planError)}</pre></div>`; return; }
@@ -545,6 +548,16 @@ function renderWork() {
     b.addEventListener('click', () => selectRun(b.dataset.run)));
 }
 
+// Child runs delegated by an Orchestrate-mode manager (parent_run_id = the
+// manager run). Deduped across active + recent.
+function childrenOf(rid) {
+  const seen = new Set(); const out = [];
+  for (const r of [...S.activeRuns, ...S.recentRuns]) {
+    if (r.parent_run_id === rid && !seen.has(r.id)) { seen.add(r.id); out.push(r); }
+  }
+  return out;
+}
+
 async function renderDetail() {
   const el = document.querySelector('#aios-cockpit-modal #ck-detail');
   if (!el) return;
@@ -553,6 +566,8 @@ async function renderDetail() {
     return;
   }
   const rid = S.selectedRunId;
+  const kids = childrenOf(rid);
+  if (S.detailTab === 'children' && !kids.length) S.detailTab = 'output';
   const isPlanRun = S.planRunId && rid === S.planRunId;
   const planBar = isPlanRun
     ? `<div class="ck-plan-bar">
@@ -574,6 +589,7 @@ async function renderDetail() {
     <div class="ck-detail-tabs">
       <button class="ck-dtab ${S.detailTab === 'output' ? 'active' : ''}" data-dt="output">Output</button>
       <button class="ck-dtab ${S.detailTab === 'changes' ? 'active' : ''}" data-dt="changes">Changes</button>
+      ${kids.length ? `<button class="ck-dtab ${S.detailTab === 'children' ? 'active' : ''}" data-dt="children">Children <span class="ck-dtab-n">${kids.length}</span></button>` : ''}
     </div>
     <div id="ck-detail-body" class="ck-detail-body"><p class="ck-muted">Loading…</p></div>`;
   el.querySelector('#ck-follow').addEventListener('click', () => openRunTerminal(rid));
@@ -588,10 +604,40 @@ async function renderDetail() {
   renderDetailBody();
 }
 
+function renderChildren(el, rid) {
+  const kids = childrenOf(rid);
+  const isLive = (r) => S.activeRuns.some((a) => a.id === r.id);
+  const tally = kids.reduce((acc, r) => {
+    const k = isLive(r) ? 'running' : (r.status || 'other');
+    acc[k] = (acc[k] || 0) + 1; return acc;
+  }, {});
+  const tallyStr = Object.entries(tally).map(([k, n]) => `${n} ${k}`).join(' · ');
+  const rows = kids.map((r) => `
+    <button class="ck-run ${r.id === S.selectedRunId ? 'sel' : ''}" data-run="${esc(r.id)}">
+      <span class="ck-run-dot ${isLive(r) ? 'live' : esc(r.status || '')}"></span>
+      <code class="ck-run-id">${esc(r.short_id || r.id)}</code>
+      ${r.profile ? `<span class="ck-run-prof">${esc(r.profile)}</span>` : ''}
+      <span class="ck-muted">${fmtAge(r.age_sec)}</span>
+      <span class="ck-run-task">${esc((r.task || '').slice(0, 80))}</span>
+    </button>`).join('');
+  el.innerHTML = `
+    <div class="ck-children-head">
+      <span class="ck-muted">Orchestration thread · ${kids.length} delegated child run${kids.length !== 1 ? 's' : ''}${tallyStr ? ` · ${esc(tallyStr)}` : ''}.</span>
+      <p class="ck-muted" style="margin:4px 0 0;">Select a child to review its output &amp; changes.</p>
+    </div>
+    <div class="ck-children-list">${rows || '<p class="ck-muted">No child runs.</p>'}</div>`;
+  el.querySelectorAll('.ck-run').forEach((b) =>
+    b.addEventListener('click', () => selectRun(b.dataset.run)));
+}
+
 async function renderDetailBody() {
   const el = document.querySelector('#aios-cockpit-modal #ck-detail-body');
   if (!el) return;
   const rid = S.selectedRunId;
+  if (S.detailTab === 'children') {
+    renderChildren(el, rid);
+    return;
+  }
   if (S.detailTab === 'output') {
     const d = await aiosGet(`/runs/${encodeURIComponent(rid)}/output`);
     if (S.selectedRunId !== rid) return;   // selection changed mid-fetch
@@ -762,14 +808,20 @@ async function doBackfillPr(rid) {
 }
 
 // ── Tabs + poll ────────────────────────────────────────────────────────────
+const TAB_PANES = { workshop: '#ck-workshop', board: '#ck-board', inbox: '#ck-inbox', schedules: '#ck-schedules' };
+
 function switchTab(tab) {
   S.tab = tab;
   const m = document.getElementById('aios-cockpit-modal');
   if (!m) return;
   m.querySelectorAll('.ck-tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
-  m.querySelector('#ck-workshop').style.display = tab === 'workshop' ? '' : 'none';
-  m.querySelector('#ck-board').style.display = tab === 'board' ? '' : 'none';
+  Object.entries(TAB_PANES).forEach(([t, sel]) => {
+    const pane = m.querySelector(sel);
+    if (pane) pane.style.display = t === tab ? '' : 'none';
+  });
   if (tab === 'board') boardModule.renderBoard(m.querySelector('#ck-board'));
+  if (tab === 'inbox') inboxTabModule.renderInbox(m.querySelector('#ck-inbox'));
+  if (tab === 'schedules') schedulesModule.renderSchedules(m.querySelector('#ck-schedules'));
 }
 
 async function poll() {
@@ -778,11 +830,16 @@ async function poll() {
   renderRail(); renderWork(); renderDecisions();
   // While the brain's plan run is live, try parsing its output into subtasks.
   pollBrainPlan();
-  // Keep the board fresh while it's the active tab (all editable/expanded state
-  // lives in the board module, so a re-render never clobbers focus or a pane).
+  // Keep the active tab fresh on the poll tick — each module keeps its editable
+  // state internally, so a re-render never clobbers focus, a pane, or a draft.
   if (S.tab === 'board') {
     const bd = document.querySelector('#aios-cockpit-modal #ck-board');
     if (bd) boardModule.renderBoard(bd);
+  } else if (S.tab === 'inbox') {
+    const ib = document.querySelector('#aios-cockpit-modal #ck-inbox');
+    if (ib) inboxTabModule.renderInbox(ib);
+  } else if (S.tab === 'schedules') {
+    schedulesModule.pollRefresh();
   }
 }
 
@@ -800,10 +857,12 @@ export async function openCockpit() {
         <div class="ck-tabs">
           <button class="ck-tab active" data-tab="workshop">Workshop</button>
           <button class="ck-tab" data-tab="board">Board</button>
+          <button class="ck-tab" data-tab="inbox">Inbox</button>
+          <button class="ck-tab" data-tab="schedules">Schedules</button>
         </div>
         <div id="ck-decisions" class="ck-decisions"></div>
         <span style="flex:1"></span>
-        <button class="ck-btn ghost sm" id="ck-classic" title="Roster / Org / Inbox — the old glance views">${ic('grid')} Classic views</button>
+        <button class="ck-btn ghost sm" id="ck-classic" title="New brief / Roster / Org — the glance views">${ic('grid')} Classic views</button>
         <button class="ck-iconbtn" id="ck-close" title="Close" aria-label="Close">${ic('close')}</button>
       </div>
       <div class="modal-body ck-body">
@@ -816,6 +875,8 @@ export async function openCockpit() {
           <div id="ck-detail" class="ck-detail"></div>
         </div>
         <div id="ck-board" class="ck-board" style="display:none;"></div>
+        <div id="ck-inbox" class="ck-inbox" style="display:none;"></div>
+        <div id="ck-schedules" class="ck-schedules" style="display:none;"></div>
       </div>
     </div>`;
   document.body.appendChild(modal);
@@ -823,6 +884,9 @@ export async function openCockpit() {
   // Board actions (status move, merge, approve, answer) resync the Decisions
   // strip immediately with the counts the board just recomputed — no refetch.
   boardModule.setOnChange((c) => { if (c) { S.decisions = c; renderDecisions(); } });
+  // Inbox actions can mint issues / answer questions / merge — refresh the
+  // Decisions strip (which re-derives from the board's single fetch).
+  inboxTabModule.setOnChange(() => { loadDecisions().then(renderDecisions); });
 
   document.getElementById('ck-close').addEventListener('click', closeCockpit);
   document.getElementById('ck-classic').addEventListener('click', () => agentsHubModule.openAgentsHub());

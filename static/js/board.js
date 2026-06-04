@@ -32,7 +32,8 @@ const B = {
   issues: [],          // flat list (board columns flattened; each carries .status + .blocked)
   cancelled: [],
   statuses: COLS.map((c) => c.key),
-  proposals: [],
+  proposals: [],          // Hermes advisory files
+  taskProposals: [],      // manager suggest_tasks decompositions (approve → mints issues)
   questions: [],
   // filters
   filter: '',
@@ -43,10 +44,12 @@ const B = {
   detail: {},                 // issue id -> full detail (runs/children)
   propExpanded: new Set(),    // proposal names expanded
   propDetail: {},             // name -> full markdown
+  tpExpanded: new Set(),      // manager-proposal ids expanded
   answerDraft: {},            // question id -> textarea value
   deep: {},                   // `${type}:${id}` -> {state:'loading'|'done'|'error', ...}
+  goals: [],                  // for the new-issue goal picker + card goal links
   showNewIssue: false,
-  newIssue: { title: '', assignee: '', priority: 5, status: 'backlog', project_dir: '' },
+  newIssue: { title: '', description: '', assignee: '', priority: 5, status: 'backlog', goal_id: '', project_dir: '' },
   onChange: null,             // workshop callback to resync the Decisions strip
 };
 
@@ -55,7 +58,9 @@ export function setOnChange(fn) { B.onChange = fn; }
 function counts() {
   return {
     in_review: B.issues.filter((i) => (i.status || '') === 'in_review').length,
-    proposals: B.proposals.length,
+    // The Decisions strip's "proposals" pill folds both approval surfaces: a
+    // manager's task decomposition (mints issues) and Hermes advisory files.
+    proposals: B.taskProposals.length + B.proposals.length,
     questions: B.questions.length,
   };
 }
@@ -63,8 +68,9 @@ function notifyChange() { if (B.onChange) B.onChange(counts()); }
 
 // ── data load ───────────────────────────────────────────────────────────────
 export async function loadBoard() {
-  const [bd, pr, qs] = await Promise.all([
+  const [bd, tp, pr, qs] = await Promise.all([
     aiosGet('/issues?board=true'),
+    aiosGet('/task-proposals'),
     aiosGet('/proposals'),
     aiosGet('/questions'),
   ]);
@@ -72,14 +78,11 @@ export async function loadBoard() {
   B.issues = cols.flatMap((c) => (c.issues || []));
   B.cancelled = (bd && bd.cancelled) || [];
   if (bd && Array.isArray(bd.statuses)) B.statuses = bd.statuses;
+  B.taskProposals = (tp && (tp.proposals || tp)) || [];
   B.proposals = (pr && (pr.proposals || pr)) || [];
   B.questions = (qs && (qs.questions || qs)) || [];
   B.loaded = true;
-  return {
-    in_review: B.issues.filter((i) => (i.status || '') === 'in_review').length,
-    proposals: B.proposals.length,
-    questions: B.questions.length,
-  };
+  return counts();
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -145,9 +148,14 @@ export function renderBoard(el) {
     </div>
     <div class="ck-board-rails">
       <div class="ck-rail-col">
-        <h4 class="ckb-rail-h">Proposals <span class="ckb-rail-n">${B.proposals.length}</span>
-          <span class="ckb-rail-sub">Hermes advisory</span></h4>
-        <div id="ckb-proposals">${B.proposals.length ? B.proposals.map(renderProposal).join('') : '<p class="ck-muted ckb-empty">No pending proposals.</p>'}</div>
+        <h4 class="ckb-rail-h">Manager proposals <span class="ckb-rail-n">${B.taskProposals.length}</span>
+          <span class="ckb-rail-sub">Approve → mints issues</span></h4>
+        <div id="ckb-taskprops">${B.taskProposals.length ? B.taskProposals.map(renderTaskProposal).join('') : '<p class="ck-muted ckb-empty">No task proposals awaiting approval.</p>'}</div>
+      </div>
+      <div class="ck-rail-col">
+        <h4 class="ckb-rail-h">Advisory (Hermes) <span class="ckb-rail-n">${B.proposals.length}</span>
+          <span class="ckb-rail-sub">Advisory files</span></h4>
+        <div id="ckb-proposals">${B.proposals.length ? B.proposals.map(renderProposal).join('') : '<p class="ck-muted ckb-empty">No pending advisory.</p>'}</div>
       </div>
       <div class="ck-rail-col">
         <h4 class="ckb-rail-h">Questions <span class="ckb-rail-n">${B.questions.length}</span>
@@ -179,6 +187,11 @@ function renderCard(i) {
   const open = B.expanded.has(i.id);
   const blocked = i.status === 'blocked';
   const prChip = i.pr_url ? `<a class="ckb-chip ckb-pr" href="${esc(i.pr_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">PR</a>` : '';
+  const goalChip = i.goal_id
+    ? (i.goal_url
+        ? `<a class="ckb-chip ckb-goal" href="${esc(i.goal_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="goal ${esc(i.goal_id)}">${ic('link')} ${esc(i.goal_title || i.goal_id)}</a>`
+        : `<span class="ckb-chip ckb-goal" title="goal">${ic('link')} ${esc(i.goal_title || i.goal_id)}</span>`)
+    : '';
   const head = `
     <div class="ckb-card-top">
       <span class="ckb-prio ${prioClass(i.priority)}" title="priority ${esc(i.priority)}">${esc(i.priority ?? '·')}</span>
@@ -188,6 +201,7 @@ function renderCard(i) {
       ${i.assignee ? `<span class="ckb-chip">${esc(i.assignee)}</span>` : ''}
       ${i.created_by ? `<span class="ckb-chip ghost">via ${esc(i.created_by)}</span>` : ''}
       ${blocked ? '<span class="ckb-chip blocked">blocked</span>' : ''}
+      ${goalChip}
       ${prChip}
     </div>`;
   return `<div class="ckb-card ${open ? 'open' : ''}" data-id="${esc(i.id)}">
@@ -260,6 +274,36 @@ function renderProposal(p) {
   </div>`;
 }
 
+function renderTaskProposal(p) {
+  const id = p.id;
+  const open = B.tpExpanded.has(id);
+  const tasks = Array.isArray(p.tasks) ? p.tasks : [];
+  const targets = [...new Set(tasks.map((t) => t.to).filter(Boolean))];
+  let body = '';
+  if (open) {
+    const rows = tasks.map((t) => `<div class="ckb-tp-task">
+      <span class="ck-run-prof">${esc(t.to || '?')}</span>
+      <span class="ckb-tp-task-title">${esc(t.title || t.task || '(untitled)')}</span>
+    </div>`).join('') || '<p class="ck-muted">No decoded tasks.</p>';
+    body = `<div class="ckb-prop-body">
+      ${p.goal_id ? `<div class="ckb-enrich"><span class="ckb-enrich-k">goal</span><span>${esc(p.goal_id)}</span></div>` : ''}
+      <div class="ckb-tp-tasks">${rows}</div>
+      <div class="ckb-card-actions">
+        <button class="ck-btn primary sm ckb-tp-approve" data-id="${esc(id)}">${ic('check')} Approve → ${tasks.length} issue${tasks.length !== 1 ? 's' : ''}</button>
+        <button class="ck-btn ghost sm ckb-tp-reject" data-id="${esc(id)}">Reject</button>
+      </div>
+    </div>`;
+  }
+  return `<div class="ckb-prop ${open ? 'open' : ''}" data-tpid="${esc(id)}">
+    <div class="ckb-prop-head" data-tptoggle="${esc(id)}">
+      <span class="ck-run-prof">${esc(p.agent || 'manager')}</span>
+      <span class="ckb-prop-name">${esc(p.summary || 'task proposal')}</span>
+      <span class="ckb-rail-n">${tasks.length}→${esc(targets.join(', ') || '—')}</span>
+    </div>
+    ${body}
+  </div>`;
+}
+
 function renderQuestion(q) {
   const id = q.id;
   const dk = deepKey('question', id);
@@ -311,12 +355,29 @@ function bindBoard(el) {
   });
   el.querySelector('#ckb-assignee')?.addEventListener('change', (e) => { B.fAssignee = e.target.value; rerender(); });
   el.querySelector('#ckb-createdby')?.addEventListener('change', (e) => { B.fCreatedBy = e.target.value; rerender(); });
-  el.querySelector('#ckb-new')?.addEventListener('click', () => { B.showNewIssue = !B.showNewIssue; renderNewForm(el); });
+  el.querySelector('#ckb-new')?.addEventListener('click', async () => {
+    B.showNewIssue = !B.showNewIssue;
+    if (B.showNewIssue && !B.goals.length) {
+      const g = await aiosGet('/goals');
+      B.goals = (g && g.goals) || [];
+    }
+    renderNewForm(el);
+  });
   renderNewForm(el);
   bindCards(el);
+  bindTaskProposals(el);
   bindProposals(el);
   bindQuestions(el);
   bindDeep(el);
+}
+
+function bindTaskProposals(el) {
+  el.querySelectorAll('[data-tptoggle]').forEach((h) =>
+    h.addEventListener('click', () => toggleTaskProposal(h.dataset.tptoggle)));
+  el.querySelectorAll('.ckb-tp-approve').forEach((b) =>
+    b.addEventListener('click', (e) => { e.stopPropagation(); actTaskProposal(b.dataset.id, 'approve'); }));
+  el.querySelectorAll('.ckb-tp-reject').forEach((b) =>
+    b.addEventListener('click', (e) => { e.stopPropagation(); actTaskProposal(b.dataset.id, 'reject'); }));
 }
 
 function bindCards(el) {
@@ -359,11 +420,17 @@ function renderNewForm(el) {
   if (!slot) return;
   if (!B.showNewIssue) { slot.innerHTML = ''; return; }
   const n = B.newIssue;
+  const goalOpts = ['<option value="">— no goal —</option>'].concat(
+    B.goals.map((g) => `<option value="${esc(g.id)}" ${g.id === n.goal_id ? 'selected' : ''}>${esc(g.title || g.id)}</option>`)
+  ).join('');
   slot.innerHTML = `<div class="ckb-newform">
     <input id="ni-title" placeholder="Issue title…" value="${esc(n.title)}">
     <input id="ni-assignee" placeholder="assignee (specialist)" value="${esc(n.assignee)}">
     <input id="ni-priority" type="number" min="1" max="9" value="${esc(n.priority)}" title="priority 1-9">
     <select id="ni-status">${COLS.map((c) => `<option value="${c.key}" ${c.key === n.status ? 'selected' : ''}>${c.label}</option>`).join('')}</select>
+    <textarea id="ni-desc" rows="2" placeholder="description / scope (optional)">${esc(n.description)}</textarea>
+    <select id="ni-goal" title="linked goal">${goalOpts}</select>
+    <input id="ni-projdir" placeholder="project_dir (optional, for diff/PR)" value="${esc(n.project_dir)}">
     <button id="ni-create" class="ck-btn primary sm">Create</button>
     <button id="ni-cancel" class="ck-btn ghost sm">Cancel</button>
     <span id="ni-msg" class="ck-muted"></span>
@@ -372,6 +439,9 @@ function renderNewForm(el) {
   slot.querySelector('#ni-assignee').addEventListener('input', (e) => { n.assignee = e.target.value; });
   slot.querySelector('#ni-priority').addEventListener('input', (e) => { n.priority = e.target.value; });
   slot.querySelector('#ni-status').addEventListener('change', (e) => { n.status = e.target.value; });
+  slot.querySelector('#ni-desc').addEventListener('input', (e) => { n.description = e.target.value; });
+  slot.querySelector('#ni-goal').addEventListener('change', (e) => { n.goal_id = e.target.value; });
+  slot.querySelector('#ni-projdir').addEventListener('input', (e) => { n.project_dir = e.target.value; });
   slot.querySelector('#ni-cancel').addEventListener('click', () => { B.showNewIssue = false; renderNewForm(el); });
   slot.querySelector('#ni-create').addEventListener('click', () => createIssue(el));
 }
@@ -428,9 +498,12 @@ async function createIssue(el) {
   const res = await aiosPost('/issues', {
     title: n.title.trim(), assignee: n.assignee.trim() || null,
     priority: Number(n.priority) || 5, status: n.status,
+    description: n.description.trim() || null,
+    goal_id: n.goal_id || null,
+    project_dir: n.project_dir.trim() || null,
   });
   if (res && res.ok) {
-    B.newIssue = { title: '', assignee: '', priority: 5, status: 'backlog', project_dir: '' };
+    B.newIssue = { title: '', description: '', assignee: '', priority: 5, status: 'backlog', goal_id: '', project_dir: '' };
     B.showNewIssue = false;
     await loadBoard();
     notifyChange();
@@ -438,6 +511,33 @@ async function createIssue(el) {
   } else if (msg) {
     msg.textContent = `failed: ${(res && (res.error || JSON.stringify(res))) || 'unknown'}`;
   }
+}
+
+function toggleTaskProposal(id) {
+  if (B.tpExpanded.has(id)) B.tpExpanded.delete(id); else B.tpExpanded.add(id);
+  rerender();
+}
+
+async function actTaskProposal(id, action) {
+  const p = B.taskProposals.find((x) => x.id === id);
+  const n = (p && Array.isArray(p.tasks)) ? p.tasks.length : 0;
+  const verb = action === 'approve' ? 'Approve' : 'Reject';
+  const msg = action === 'approve'
+    ? `Approve this proposal? This mints ${n} issue${n !== 1 ? 's' : ''} and assigns the specialists.`
+    : 'Reject this proposal? No issues are created.';
+  if (!await styledConfirm(msg, { confirmText: verb, danger: action === 'reject' })) return;
+  const res = await aiosPost(`/task-proposals/${encodeURIComponent(id)}/${action}`, {});
+  if (!res || res.error || res.ok === false) {
+    await styledAlert(`${verb} failed: ${(res && (res.error || res.detail || JSON.stringify(res))) || 'unknown'}`, { title: `${verb} failed`, danger: true });
+    return;
+  }
+  B.tpExpanded.delete(id);
+  if (action === 'approve' && Array.isArray(res.issues) && res.issues.length) {
+    await styledAlert(`Minted ${res.issues.length} issue${res.issues.length !== 1 ? 's' : ''}: ${res.issues.map((x) => x.title || x.issue_id).join(', ')}`, { title: 'Proposal approved' });
+  }
+  await loadBoard();
+  notifyChange();
+  rerender();
 }
 
 async function toggleProposal(name) {

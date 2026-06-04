@@ -5040,6 +5040,11 @@ body.bg-pattern-sparkles {
     }
     .ck-dtab:hover { color: var(--ck-ink); }
     .ck-dtab.active { color: var(--ck-accent); border-bottom-color: var(--ck-accent); }
+    .ck-dtab-n { font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ck-accent);
+      background: var(--ck-tint); border-radius: var(--ck-r-pill); padding: 0 6px; margin-left: 4px; }
+    /* Orchestrate-mode child aggregation (T6) */
+    .ck-children-head { margin-bottom: 10px; font-size: var(--ck-t-sm); }
+    .ck-children-list { display: flex; flex-direction: column; gap: 6px; }
     .ck-detail-body { flex: 1; overflow: auto; }
     .ck-pre {
       font-family: var(--mono, monospace); font-size: 12px; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
@@ -5077,8 +5082,19 @@ body.bg-pattern-sparkles {
       height: auto; min-height: 34px; background: var(--panel); color: inherit; border: 1px solid var(--ck-line-2);
       border-radius: 8px; font-family: inherit; font-size: 12px; padding: 6px 9px;
     }
+    .ckb-newform textarea {
+      flex: 1 1 100%; min-height: 48px; box-sizing: border-box; background: var(--panel); color: inherit;
+      border: 1px solid var(--ck-line-2); border-radius: 8px; font-family: inherit; font-size: 12px; padding: 7px 9px; resize: vertical;
+    }
+    .ckb-newform textarea:focus, .ckb-newform input:focus, .ckb-newform select:focus { outline: none; border-color: var(--ck-accent); }
     .ckb-newform #ni-title { flex: 1 1 240px; }
     .ckb-newform #ni-priority { width: 64px; }
+    .ckb-newform #ni-projdir { flex: 1 1 220px; }
+    .ckb-newform #ni-goal { flex: 0 1 200px; }
+    .ckb-chip.ckb-goal { text-decoration: none; display: inline-flex; align-items: center; gap: 3px;
+      background: var(--ck-surface-2); color: var(--ck-muted); }
+    .ckb-chip.ckb-goal .ck-ic { width: 11px; height: 11px; }
+    a.ckb-chip.ckb-goal:hover { color: var(--ck-accent); }
 
     /* Kanban */
     .ck-kanban { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 11px; align-items: start; flex: 0 0 auto; }
@@ -5124,8 +5140,12 @@ body.bg-pattern-sparkles {
     .ckb-cancelled { margin-top: 6px; padding-top: 8px; border-top: 1px dashed var(--ck-line); display: flex; flex-direction: column; gap: 8px; opacity: 0.72; }
     .ckb-cancelled-h { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 700; color: var(--ck-faint); }
 
-    /* Bottom rails: Proposals + Questions */
-    .ck-board-rails { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; flex: 0 0 auto; }
+    /* Bottom rails: Manager proposals + Advisory (Hermes) + Questions */
+    .ck-board-rails { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; flex: 0 0 auto; }
+    /* Manager task-proposal: decoded task list (to → title) */
+    .ckb-tp-tasks { display: flex; flex-direction: column; gap: 4px; }
+    .ckb-tp-task { display: flex; align-items: baseline; gap: 8px; font-size: var(--ck-t-sm); }
+    .ckb-tp-task-title { color: var(--ck-ink); line-height: 1.4; word-break: break-word; }
     .ck-rail-col { display: flex; flex-direction: column; gap: 9px; }
     .ckb-rail-h { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 13px; font-weight: 700; }
     .ckb-rail-n { font-size: 11px; font-weight: 700; color: var(--ck-accent); background: var(--ck-tint); border-radius: 999px; padding: 1px 8px; }
@@ -5159,6 +5179,79 @@ body.bg-pattern-sparkles {
       .ck-kanban { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .ck-board-rails { grid-template-columns: 1fr; }
     }
+    @media (min-width: 1101px) and (max-width: 1400px) {
+      .ck-board-rails { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    /* ── Inbox tab (inboxTab.js, Phase 2 T2) ─────────────────────────────── */
+    .ck-inbox { height: 100%; overflow-y: auto; padding: 16px 18px 28px; display: flex; flex-direction: column; gap: 12px; }
+    .ck-inbox-head { flex: 0 0 auto; }
+    .ck-inbox-list { display: flex; flex-direction: column; gap: 10px; max-width: 920px; }
+    .ck-inbox-card { background: var(--ck-surface); border: 1px solid var(--ck-line-2); border-radius: var(--ck-r-lg);
+      padding: 11px 13px; display: flex; flex-direction: column; gap: var(--ck-gap-xs); }
+    .ck-inbox-card-top { display: flex; align-items: center; gap: 9px; }
+    .ck-inbox-kind { flex: 0 0 auto; }
+    .ck-inbox-title { font-size: var(--ck-t-body); font-weight: 600; color: var(--ck-ink); line-height: 1.35; word-break: break-word; }
+    .ck-inbox-age { font-size: var(--ck-t-eyebrow); flex: 0 0 auto; }
+    .ck-inbox-sub { font-size: var(--ck-t-sm); color: var(--ck-muted); line-height: 1.45; }
+    .ck-inbox-decision { font-size: var(--ck-t-sm); color: var(--ck-ink); line-height: 1.45;
+      padding: 6px 9px; background: var(--ck-tint); border-radius: var(--ck-r-sm); }
+    .ck-inbox-adv { font-size: var(--ck-t-sm); color: var(--ck-muted); line-height: 1.45; white-space: pre-wrap;
+      border-left: 2px solid var(--ck-line-2); padding-left: 9px; }
+    .ck-inbox-answer { width: 100%; box-sizing: border-box; margin: 0; }
+    .ck-inbox-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 2px; }
+    .ck-inbox-empty { display: flex; align-items: center; gap: 9px; color: var(--ck-muted);
+      font-size: var(--ck-t-body); padding: 32px 4px; }
+    .ck-inbox-empty .ck-ic { color: var(--ck-ok); width: 18px; height: 18px; }
+    #aios-cockpit-modal .ck-inbox button { margin-top: 0; }
+    #aios-cockpit-modal :is(.ck-inbox-act):focus-visible { outline: 2px solid var(--ck-accent); outline-offset: 2px; }
+
+    /* ── Schedules tab (schedules.js, Phase 2 T3) ────────────────────────── */
+    .ck-schedules { height: 100%; overflow-y: auto; padding: 16px 18px 28px; display: flex; flex-direction: column; gap: 12px; }
+    #aios-cockpit-modal .ck-schedules button { margin-top: 0; }
+    .ck-sched-bar { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+    .ck-sched-list { display: flex; flex-direction: column; gap: 8px; max-width: 1040px; }
+    .ck-sched-card { background: var(--ck-surface); border: 1px solid var(--ck-line-2); border-radius: var(--ck-r-lg);
+      padding: 11px 13px; display: flex; flex-direction: column; gap: var(--ck-gap-sm); }
+    .ck-sched-card.paused { opacity: 0.66; }
+    .ck-sched-card.archived { opacity: 0.42; }
+    .ck-sched-top { display: flex; align-items: center; gap: 8px; }
+    .ck-sched-title-btn { flex: 1; background: transparent; border: 0; cursor: pointer; text-align: left; padding: 0; min-width: 0; }
+    .ck-sched-title { font-size: var(--ck-t-body); font-weight: 600; color: var(--ck-ink);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+    .ck-sched-title-btn:hover .ck-sched-title { color: var(--ck-accent); }
+    .ck-sched-actions { display: flex; gap: 5px; flex: 0 0 auto; }
+    .ck-sched-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: var(--ck-t-sm); }
+    .ck-sched-detail { border-top: 1px solid var(--ck-line); padding-top: 10px; display: flex; flex-direction: column; gap: var(--ck-gap-xs); }
+    .ck-sched-instr { max-height: 160px; margin: 0; }
+    .ck-sched-firelog { display: flex; flex-direction: column; }
+    .ck-sched-fire { display: flex; align-items: center; gap: 10px; font-size: var(--ck-t-sm); padding: 5px 0; border-bottom: 1px solid var(--ck-line); }
+    .ck-sched-fire:last-child { border-bottom: 0; }
+    .ck-sched-firestatus { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+      padding: 2px 8px; border-radius: var(--ck-r-pill); background: var(--ck-surface-2); color: var(--ck-muted); }
+    .ck-sched-firestatus.s-completed { background: color-mix(in srgb, var(--ck-ok) 18%, transparent); color: var(--ck-ok); }
+    .ck-sched-firestatus.s-failed { background: color-mix(in srgb, var(--ck-danger) 18%, transparent); color: var(--ck-danger); }
+    .ck-sched-firestatus.s-pending_approval { background: color-mix(in srgb, var(--ck-warn) 18%, transparent); color: var(--ck-warn); }
+    .ck-sched-firestatus.s-dispatched, .ck-sched-firestatus.s-spawned { background: var(--ck-tint); color: var(--ck-accent); }
+
+    /* Inline create/edit editor */
+    .ck-sched-editor { background: var(--ck-surface); border: 1px solid var(--ck-line-2); border-radius: var(--ck-r-lg);
+      padding: 14px 15px; display: flex; flex-direction: column; gap: var(--ck-gap-sm); max-width: 680px; }
+    .ck-sched-editor-h { font-size: var(--ck-t-h2); font-weight: 700; color: var(--ck-ink); }
+    .ck-sched-editor input, .ck-sched-editor select, .ck-sched-editor textarea {
+      height: auto; min-height: 34px; box-sizing: border-box; width: 100%;
+      background: var(--panel); color: inherit; border: 1px solid var(--ck-line-2);
+      border-radius: var(--ck-r-sm); font-family: inherit; font-size: var(--ck-t-sm); padding: 7px 10px; }
+    .ck-sched-editor textarea { resize: vertical; font-family: inherit; }
+    .ck-sched-editor input:focus, .ck-sched-editor select:focus, .ck-sched-editor textarea:focus {
+      outline: none; border-color: var(--ck-accent); }
+    .ck-sched-presets { display: flex; gap: 6px; flex-wrap: wrap; }
+    .ck-chip-btn { background: var(--ck-surface-2); color: var(--ck-muted); border: 1px solid var(--ck-line);
+      border-radius: var(--ck-r-pill); font-size: var(--ck-t-eyebrow); font-weight: 600; padding: 4px 11px; cursor: pointer; }
+    .ck-chip-btn:hover { color: var(--ck-accent); border-color: color-mix(in srgb, var(--ck-accent) 45%, transparent); background: var(--ck-tint); }
+    #aios-cockpit-modal :is(.ck-chip-btn, .ck-sched-title-btn, .ck-sched-toggle-status,
+      .ck-sched-run, .ck-sched-edit, .ck-sched-del, .ck-sched-rr):focus-visible {
+      outline: 2px solid var(--ck-accent); outline-offset: 2px; }
 
     /* ── Manager-brain spawn path (workshop.js §5, Phase C) ──────────────── */
     .ck-brain-id { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 2px 0; }

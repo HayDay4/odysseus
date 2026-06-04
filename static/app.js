@@ -23,7 +23,6 @@ import galleryModule from './js/gallery.js';
 import tasksModule from './js/tasks.js';
 import egressConsentModule from './js/egressConsent.js';
 import workshopModule from './js/workshop.js';
-import runsKanbanModule from './js/runsKanban.js';
 import calendarModule from './js/calendar.js';
 import notesModule from './js/notes.js';
 import adminModule from './js/admin.js';
@@ -1045,7 +1044,9 @@ function initializeEventListeners() {
     '/egress':   () => egressConsentModule && egressConsentModule.openEgressConsent(),
     '/agents':   () => workshopModule && workshopModule.openCockpit(),
     '/workshop': () => workshopModule && workshopModule.openCockpit(),
-    '/runs':     () => runsKanbanModule && runsKanbanModule.openRunsKanban(),
+    // /runs folds into the cockpit Workshop (project WORK list + run detail) —
+    // the standalone runs kanban was a duplicate surface (Phase 2 T7).
+    '/runs':     () => workshopModule && workshopModule.openCockpit(),
   };
   const _opener = _routeOpen[urlPath];
   // Defer the opener — at this point in init, the modules whose handlers
