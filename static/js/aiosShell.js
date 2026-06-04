@@ -1,6 +1,8 @@
 /**
  * aiosShell.js — shared modal shell + helpers for the native AIOS workforce views
- * (agentsRoster, org, proposals, brief, inbox, runsKanban, runTerminal).
+ * (agentsRoster, org, runTerminal) and the cockpit modules (workshop, board,
+ * inboxTab, schedules). Proposals/brief/inbox/runsKanban modals were retired —
+ * their surfaces now live as cockpit tabs.
  *
  * Factors out the tasks.js modal pattern (build .modal/.modal-content, close-btn,
  * Esc, click-outside, exit animation, optional poll) so each view module stays a
@@ -56,6 +58,20 @@ export async function aiosPatch(path, body) {
     return await res.json();
   } catch (e) {
     console.error('aios PATCH', path, 'failed', e);
+    return { error: String(e) };
+  }
+}
+
+/** DELETE to the AIOS proxy (routine deletion). Returns parsed body (or {error}). */
+export async function aiosDelete(path) {
+  try {
+    const res = await fetch(`${API_BASE}/api/aios${path}`, {
+      method: 'DELETE',
+      credentials: 'same-origin',
+    });
+    return await res.json();
+  } catch (e) {
+    console.error('aios DELETE', path, 'failed', e);
     return { error: String(e) };
   }
 }

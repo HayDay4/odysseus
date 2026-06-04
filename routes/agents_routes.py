@@ -75,6 +75,28 @@ async def _patch(path: str, body):
         return JSONResponse({"error": f"panel unreachable: {e}"}, status_code=502)
 
 
+async def _delete(path: str):
+    """Proxy a DELETE to the panel, returning its JSON (or a 502 envelope).
+    Used for routine deletion (DELETE /api/routines/{id})."""
+    try:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            r = await client.delete(f"{PANEL_BASE}{path}")
+        return JSONResponse(r.json(), status_code=r.status_code)
+    except httpx.HTTPError as e:
+        logger.warning("aios proxy DELETE %s failed: %s", path, e)
+        return JSONResponse({"error": f"panel unreachable: {e}"}, status_code=502)
+
+
+def _qs(request: Request, keys: tuple[str, ...]) -> str:
+    """Build an allow-listed query string from request params (no blind passthrough)."""
+    parts = [
+        f"{k}={quote(str(v), safe='')}"
+        for k in keys
+        if (v := request.query_params.get(k)) is not None
+    ]
+    return "?" + "&".join(parts) if parts else ""
+
+
 def setup_agents_routes() -> APIRouter:
     router = APIRouter(prefix="/api/aios", tags=["aios"])
 
@@ -206,7 +228,21 @@ def setup_agents_routes() -> APIRouter:
         seg = _safe_segment(run_id)
         if seg is None:
             return JSONResponse({"error": "invalid run_id"}, status_code=400)
-        return await _get(f"/api/runs/{seg}/output")
+        # The cockpit POLLS this while a run is still warming up (no transcript
+        # yet), and the panel answers 404 "not ready". The browser logs every 404
+        # as console noise. Downgrade the not-ready 404 to a 200 {ok:false} here
+        # (body preserved, so the client's `d.ok` branch is unchanged) so a normal
+        # plan-poll stays quiet. Genuine errors keep their status.
+        try:
+            async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+                r = await client.get(f"{PANEL_BASE}/api/runs/{seg}/output")
+            body = r.json()
+            status = 200 if (r.status_code == 404 and isinstance(body, dict)
+                             and body.get("ok") is False) else r.status_code
+            return JSONResponse(body, status_code=status)
+        except httpx.HTTPError as e:
+            logger.warning("aios proxy GET /runs/%s/output failed: %s", run_id, e)
+            return JSONResponse({"ok": False, "error": f"panel unreachable: {e}"}, status_code=200)
 
     @router.get("/runs/{run_id}/artifacts")
     async def run_artifacts(run_id: str):
@@ -292,5 +328,151 @@ def setup_agents_routes() -> APIRouter:
         # Opus reads the item's full context + reasons — allow a long synchronous
         # window (the panel caps the model call itself; we just wait on it).
         return await _post("/api/review/deep", body, timeout=150.0)
+
+    # --- Manager task-proposals (Phase 2 T1) ---
+    # DISTINCT from /proposals (Hermes advisory files): these are a manager's
+    # suggest_tasks decomposition; approve → questions.approve_proposal →
+    # delegation.delegate mints issues. Namespaced /task-proposals to avoid the
+    # /proposals (Hermes) overload.
+    @router.get("/task-proposals")
+    async def task_proposals():
+        return await _get("/api/proposals")
+
+    @router.get("/task-proposals/{q_id}")
+    async def task_proposal_detail(q_id: str):
+        seg = _safe_segment(q_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid proposal id"}, status_code=400)
+        return await _get(f"/api/proposals/{seg}")
+
+    @router.post("/task-proposals/{q_id}/approve")
+    async def task_proposal_approve(q_id: str):
+        seg = _safe_segment(q_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid proposal id"}, status_code=400)
+        return await _post(f"/api/proposals/{seg}/approve", {}, timeout=60.0)
+
+    @router.post("/task-proposals/{q_id}/reject")
+    async def task_proposal_reject(q_id: str):
+        seg = _safe_segment(q_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid proposal id"}, status_code=400)
+        return await _post(f"/api/proposals/{seg}/reject", {})
+
+    # --- Governance Inbox actions (Phase 2 T2) ---
+    # /inbox itself is already proxied above; these wire the per-kind actions the
+    # cockpit Inbox tab dispatches against (reflections · skill-proposals ·
+    # routine-runs · awaiting runs). Hermes dream-proposals reuse /proposals;
+    # task-proposals reuse /task-proposals; merge reuses /issues/{id}/merge.
+    @router.post("/reflections/promote")
+    async def reflection_promote(body: dict):
+        return await _post("/api/reflections/promote", body)
+
+    @router.post("/reflections/discard")
+    async def reflection_discard(body: dict):
+        return await _post("/api/reflections/discard", body)
+
+    @router.get("/skill-proposals")
+    async def skill_proposals():
+        return await _get("/api/skill-proposals")
+
+    @router.get("/skill-proposals/{name}")
+    async def skill_proposal_detail(name: str):
+        seg = _safe_segment(name)
+        if seg is None:
+            return JSONResponse({"error": "invalid skill name"}, status_code=400)
+        return await _get(f"/api/skill-proposals/{seg}")
+
+    @router.post("/skill-proposals/{name}/promote")
+    async def skill_proposal_promote(name: str):
+        seg = _safe_segment(name)
+        if seg is None:
+            return JSONResponse({"error": "invalid skill name"}, status_code=400)
+        return await _post(f"/api/skill-proposals/{seg}/promote", {})
+
+    @router.post("/skill-proposals/{name}/discard")
+    async def skill_proposal_discard(name: str):
+        seg = _safe_segment(name)
+        if seg is None:
+            return JSONResponse({"error": "invalid skill name"}, status_code=400)
+        return await _post(f"/api/skill-proposals/{seg}/discard", {})
+
+    @router.post("/routine-runs/{rr_id}/approve")
+    async def routine_run_approve(rr_id: str):
+        seg = _safe_segment(rr_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid routine-run id"}, status_code=400)
+        return await _post(f"/api/routine-runs/{seg}/approve", {})
+
+    @router.post("/routine-runs/{rr_id}/reject")
+    async def routine_run_reject(rr_id: str):
+        seg = _safe_segment(rr_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid routine-run id"}, status_code=400)
+        return await _post(f"/api/routine-runs/{seg}/reject", {})
+
+    # Awaiting-run approval: id arrives as "{ns}/{rid}" (two segments validated
+    # independently). Unblocks a live run parked on an approval sentinel.
+    @router.post("/awaiting/{ns}/{rid}/approve")
+    async def awaiting_approve(ns: str, rid: str):
+        ns_seg, rid_seg = _safe_segment(ns), _safe_segment(rid)
+        if ns_seg is None or rid_seg is None:
+            return JSONResponse({"error": "invalid awaiting id"}, status_code=400)
+        return await _post(f"/api/awaiting/{ns_seg}/{rid_seg}/approve", {})
+
+    # --- Schedules / routines CRUD (Phase 2 T3) ---
+    @router.get("/routines")
+    async def routines(request: Request):
+        return await _get(f"/api/routines{_qs(request, ('status',))}")
+
+    @router.get("/routines/{routine_id}")
+    async def routine_detail(routine_id: str):
+        seg = _safe_segment(routine_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid routine id"}, status_code=400)
+        return await _get(f"/api/routines/{seg}")
+
+    @router.post("/routines")
+    async def routine_create(body: dict):
+        return await _post("/api/routines", body)
+
+    @router.patch("/routines/{routine_id}")
+    async def routine_update(routine_id: str, body: dict):
+        seg = _safe_segment(routine_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid routine id"}, status_code=400)
+        return await _patch(f"/api/routines/{seg}", body)
+
+    @router.delete("/routines/{routine_id}")
+    async def routine_delete(routine_id: str):
+        seg = _safe_segment(routine_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid routine id"}, status_code=400)
+        return await _delete(f"/api/routines/{seg}")
+
+    @router.post("/routines/{routine_id}/pause")
+    async def routine_pause(routine_id: str):
+        seg = _safe_segment(routine_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid routine id"}, status_code=400)
+        return await _post(f"/api/routines/{seg}/pause", {})
+
+    @router.post("/routines/{routine_id}/resume")
+    async def routine_resume(routine_id: str):
+        seg = _safe_segment(routine_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid routine id"}, status_code=400)
+        return await _post(f"/api/routines/{seg}/resume", {})
+
+    @router.post("/routines/{routine_id}/run-now")
+    async def routine_run_now(routine_id: str):
+        seg = _safe_segment(routine_id)
+        if seg is None:
+            return JSONResponse({"error": "invalid routine id"}, status_code=400)
+        return await _post(f"/api/routines/{seg}/run-now", {}, timeout=60.0)
+
+    @router.get("/goals")
+    async def goals(request: Request):
+        return await _get(f"/api/goals{_qs(request, ('status', 'created_by'))}")
 
     return router
