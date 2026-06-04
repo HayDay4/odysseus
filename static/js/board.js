@@ -277,6 +277,7 @@ function renderProposal(p) {
 function renderTaskProposal(p) {
   const id = p.id;
   const open = B.tpExpanded.has(id);
+  const dk = deepKey('task_proposal', id);
   const tasks = Array.isArray(p.tasks) ? p.tasks : [];
   const targets = [...new Set(tasks.map((t) => t.to).filter(Boolean))];
   let body = '';
@@ -291,7 +292,10 @@ function renderTaskProposal(p) {
       <div class="ckb-card-actions">
         <button class="ck-btn primary sm ckb-tp-approve" data-id="${esc(id)}">${ic('check')} Approve → ${tasks.length} issue${tasks.length !== 1 ? 's' : ''}</button>
         <button class="ck-btn ghost sm ckb-tp-reject" data-id="${esc(id)}">Reject</button>
+        <span style="flex:1"></span>
+        <button class="ck-btn ghost sm ckb-deep" data-type="task_proposal" data-id="${esc(id)}">${ic('brain')} Deep review</button>
       </div>
+      ${renderDeep(dk)}
     </div>`;
   }
   return `<div class="ckb-prop ${open ? 'open' : ''}" data-tpid="${esc(id)}">
