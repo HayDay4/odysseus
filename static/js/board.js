@@ -205,7 +205,7 @@ function renderCard(i) {
       ${prChip}
     </div>`;
   return `<div class="ckb-card ${open ? 'open' : ''}" data-id="${esc(i.id)}">
-    <div class="ckb-card-head" data-toggle="${esc(i.id)}">${head}</div>
+    <div class="ckb-card-head" data-toggle="${esc(i.id)}" tabindex="0" role="button" aria-expanded="${open}" data-a11y-activatable="1" aria-label="Issue: ${esc(i.title || i.id)}">${head}</div>
     ${open ? renderCardBody(i) : ''}
   </div>`;
 }

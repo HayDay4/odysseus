@@ -980,6 +980,17 @@ function initializeEventListeners() {
       }).observe(sb, { attributes: true, attributeFilter: ['class'] });
     }
   }
+  // Cockpit deep-link: /agents · /workshop · /runs all open the cockpit and
+  // hydrate from ?project=<slug>&tab=<workshop|board|inbox|schedules>.
+  const _openCockpitFromUrl = () => {
+    if (!workshopModule) return;
+    const q = new URLSearchParams(window.location.search);
+    const o = {};
+    const p = q.get('project'); const t = q.get('tab');
+    if (p) o.project = p;
+    if (['workshop', 'board', 'inbox', 'schedules'].includes(t)) o.tab = t;
+    return workshopModule.openCockpit(o);
+  };
   const _routeOpen = {
     '/notes':    () => {
       if (!notesModule) return;
@@ -1042,11 +1053,11 @@ function initializeEventListeners() {
     '/tasks':    () => document.getElementById('tool-tasks-btn')?.click(),
     '/library':  () => sessionModule && sessionModule.openLibrary && sessionModule.openLibrary(),
     '/egress':   () => egressConsentModule && egressConsentModule.openEgressConsent(),
-    '/agents':   () => workshopModule && workshopModule.openCockpit(),
-    '/workshop': () => workshopModule && workshopModule.openCockpit(),
+    '/agents':   _openCockpitFromUrl,
+    '/workshop': _openCockpitFromUrl,
     // /runs folds into the cockpit Workshop (project WORK list + run detail) —
     // the standalone runs kanban was a duplicate surface (Phase 2 T7).
-    '/runs':     () => workshopModule && workshopModule.openCockpit(),
+    '/runs':     _openCockpitFromUrl,
   };
   const _opener = _routeOpen[urlPath];
   // Defer the opener — at this point in init, the modules whose handlers

@@ -33,7 +33,11 @@ const MODE_HELP = {
 
 const S = {
   open: false,
-  escHandler: null,
+  keyHandler: null,             // combined Esc / focus-trap / kbd-nav keydown handler
+  popHandler: null,             // popstate → close (back-button)
+  prevFocus: null,              // element to restore focus to on close (#rail-agents)
+  pushedState: false,           // we pushed a history entry on open
+  urlReady: false,              // gate URL sync until initial hydrate finishes
   pollTimer: null,
   tab: 'workshop',
   projects: [],
@@ -143,6 +147,107 @@ function fmtAge(sec) {
   if (sec < 3600) return `${Math.floor(sec / 60)}m`;
   if (sec < 86400) return `${Math.floor(sec / 3600)}h`;
   return `${Math.floor(sec / 86400)}d`;
+}
+
+// ── Shell professionalism: focus, layering, deep-link, keyboard (Phase 3) ───
+const FOCUSABLE_SEL = 'a[href], button:not([disabled]), input:not([disabled]), '
+  + 'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function cockpitContent() {
+  const m = document.getElementById('aios-cockpit-modal');
+  return m ? m.querySelector('.ck-modal-content') : null;
+}
+
+// True when a modal layer sits ABOVE the cockpit (the run terminal, or a
+// styledConfirm/styledAlert overlay). Those layers own their own Esc + Tab —
+// the cockpit's keyboard handler must stand down so Esc closes the top layer
+// first (gap-analysis P3-T3) and Tab stays trapped inside it (P3-T2).
+function topLayerOpen() {
+  if (document.getElementById('aios-terminal-modal')) return true;
+  for (const id of ['styled-confirm-overlay', 'styled-alert-overlay']) {
+    const o = document.getElementById(id);
+    if (o && !o.classList.contains('hidden') && o.style.display !== 'none') return true;
+  }
+  return false;
+}
+
+function focusableIn(root) {
+  if (!root) return [];
+  // offsetParent is null for display:none subtrees → only the live tab's
+  // controls (not the hidden panes) are part of the trap.
+  return [...root.querySelectorAll(FOCUSABLE_SEL)]
+    .filter((el) => el.offsetParent !== null || el === document.activeElement);
+}
+
+function trapTab(e) {
+  const content = cockpitContent();
+  if (!content) return;
+  const f = focusableIn(content);
+  if (!f.length) return;
+  const first = f[0]; const last = f[f.length - 1];
+  const active = document.activeElement;
+  if (!content.contains(active)) { e.preventDefault(); first.focus(); return; }
+  if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+}
+
+// Arrow-key roving among same-kind rows (rail projects · WORK runs · Board
+// cards). Scope each kind to its own list so Up/Down stays within it.
+function arrowNav(e) {
+  const item = e.target.closest && e.target.closest('.ck-proj, .ck-run, .ckb-card-head');
+  if (!item) return;
+  const content = cockpitContent();
+  if (!content || !content.contains(item)) return;
+  let cls; let scope;
+  if (item.classList.contains('ck-proj')) { cls = '.ck-proj'; scope = content.querySelector('#ck-rail'); }
+  else if (item.classList.contains('ck-run')) { cls = '.ck-run'; scope = item.closest('#ck-work, .ck-children-list, .ck-detail') || content; }
+  else { cls = '.ckb-card-head'; scope = item.closest('.ck-kcol-body') || content; }
+  const items = [...(scope || content).querySelectorAll(cls)].filter((el) => el.offsetParent !== null);
+  const idx = items.indexOf(item);
+  if (idx === -1) return;
+  e.preventDefault();
+  const next = e.key === 'ArrowDown' ? Math.min(idx + 1, items.length - 1) : Math.max(idx - 1, 0);
+  if (items[next]) items[next].focus();
+}
+
+// Ctrl/Cmd+Enter submits the focused spawn box / board answer by clicking its
+// existing action button — reuses every disabled-state + handler already wired.
+function ctrlEnter(e) {
+  const t = e.target;
+  const content = cockpitContent();
+  if (!t || !content) return;
+  let btn = null;
+  if (t.id === 'ck-task') btn = content.querySelector('#ck-draft');
+  else if (t.id === 'ck-edited') btn = content.querySelector('#ck-evaluate') || content.querySelector('#ck-spawn');
+  else if (t.id === 'ck-brain-task') btn = content.querySelector('#ck-ask-brain');
+  else if (t.classList && t.classList.contains('ckb-answer') && t.dataset.qid) {
+    btn = content.querySelector(`.ckb-qanswer[data-qid="${CSS.escape(t.dataset.qid)}"]`);
+  }
+  if (btn && !btn.disabled) { e.preventDefault(); btn.click(); }
+}
+
+function cockpitKeydown(e) {
+  if (!S.open) return;
+  if (topLayerOpen()) return;   // a higher modal layer owns the keyboard
+  if (e.key === 'Escape') { e.preventDefault(); closeCockpit(); return; }
+  if (e.key === 'Tab') { trapTab(e); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { ctrlEnter(e); return; }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { arrowNav(e); }
+}
+
+// Deep-link: keep the URL in sync with project + tab so the cockpit is
+// bookmarkable and the back-button closes it. push once on open, replace on
+// every project/tab change.
+function syncCockpitUrl(replace) {
+  try {
+    const params = new URLSearchParams();
+    if (S.selectedSlug) params.set('project', S.selectedSlug);
+    if (S.tab) params.set('tab', S.tab);
+    const qs = params.toString();
+    const url = window.location.pathname + (qs ? `?${qs}` : '');
+    if (replace) history.replaceState({ aiosCockpit: 1 }, '', url);
+    else { history.pushState({ aiosCockpit: 1 }, '', url); S.pushedState = true; }
+  } catch { /* history may be unavailable in some embeds */ }
 }
 
 // ── Data loaders ───────────────────────────────────────────────────────────
@@ -671,6 +776,7 @@ function selectProject(slug) {
   S.profile = (proj && proj.profile && S.profiles.includes(proj.profile)) ? proj.profile : '';
   renderRail(); renderSpawn(); renderWork(); renderDetail();
   if (S.path === 'brain') loadManager();
+  if (S.urlReady) syncCockpitUrl(true);
 }
 
 function selectRun(rid) {
@@ -822,6 +928,7 @@ function switchTab(tab) {
   if (tab === 'board') boardModule.renderBoard(m.querySelector('#ck-board'));
   if (tab === 'inbox') inboxTabModule.renderInbox(m.querySelector('#ck-inbox'));
   if (tab === 'schedules') schedulesModule.renderSchedules(m.querySelector('#ck-schedules'));
+  if (S.urlReady) syncCockpitUrl(true);
 }
 
 async function poll() {
@@ -844,16 +951,19 @@ async function poll() {
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
-export async function openCockpit() {
+export async function openCockpit(opts = {}) {
   if (S.open) { closeCockpit(); return; }
   S.open = true;
+  // Remember what to hand focus back to on close (the rail trigger, usually).
+  S.prevFocus = document.activeElement;
 
   const modal = document.createElement('div');
   modal.className = 'modal';
   modal.id = 'aios-cockpit-modal';
   modal.innerHTML = `
-    <div class="modal-content ck-modal-content">
+    <div class="modal-content ck-modal-content" role="dialog" aria-modal="true" aria-labelledby="ck-a11y-title">
       <div class="modal-header ck-head">
+        <h2 id="ck-a11y-title" class="a11y-visually-hidden">AIOS Workshop cockpit</h2>
         <div class="ck-tabs">
           <button class="ck-tab active" data-tab="workshop">Workshop</button>
           <button class="ck-tab" data-tab="board">Board</button>
@@ -888,26 +998,49 @@ export async function openCockpit() {
   // Decisions strip (which re-derives from the board's single fetch).
   inboxTabModule.setOnChange(() => { loadDecisions().then(renderDecisions); });
 
-  document.getElementById('ck-close').addEventListener('click', closeCockpit);
+  document.getElementById('ck-close').addEventListener('click', () => closeCockpit());
   document.getElementById('ck-classic').addEventListener('click', () => agentsHubModule.openAgentsHub());
-  modal.addEventListener('click', (e) => { if (e.target === modal) closeCockpit(); });
-  S.escHandler = (e) => { if (e.key === 'Escape') closeCockpit(); };
-  document.addEventListener('keydown', S.escHandler);
+  // No backdrop click-to-close: on a full-window cockpit that is an easy
+  // mid-task data-loss (P3-T3). Dismiss is explicit only — the ✕ or Esc.
+  S.keyHandler = cockpitKeydown;
+  document.addEventListener('keydown', S.keyHandler);
+  // Back-button / browser-back closes the cockpit instead of navigating away.
+  S.popHandler = () => { if (S.open) closeCockpit({ fromPop: true }); };
+  window.addEventListener('popstate', S.popHandler);
   modal.querySelectorAll('.ck-tab').forEach((b) =>
     b.addEventListener('click', () => switchTab(b.dataset.tab)));
 
   document.querySelector('#aios-cockpit-modal #ck-rail').innerHTML = '<p class="ck-muted">Loading…</p>';
   await Promise.all([loadProjects(), loadProfiles(), loadRuns(), loadDecisions()]);
   if (!S.open) return;
+  // Hydrate from the deep-link query (?project=&tab=) before the first paint.
+  const wantSlug = opts.project && S.projects.find((p) => p.slug === opts.project) ? opts.project : null;
+  if (wantSlug) S.selectedSlug = wantSlug;
   renderDecisions(); renderRail(); renderSpawn(); renderWork(); renderDetail();
+  if (['workshop', 'board', 'inbox', 'schedules'].includes(opts.tab) && opts.tab !== 'workshop') {
+    switchTab(opts.tab);
+  }
+  // Move focus into the cockpit (the live tab) and push the deep-link entry.
+  const m2 = document.getElementById('aios-cockpit-modal');
+  const focusTarget = (m2 && m2.querySelector('.ck-tab.active')) || document.getElementById('ck-close');
+  if (focusTarget) { try { focusTarget.focus(); } catch { /* noop */ } }
+  S.urlReady = true;
+  syncCockpitUrl(false);
   S.pollTimer = setInterval(poll, 5000);
 }
 
-export function closeCockpit() {
+export function closeCockpit(opts = {}) {
   if (!S.open) return;
-  S.open = false;
+  S.open = false; S.urlReady = false;
   if (S.pollTimer) { clearInterval(S.pollTimer); S.pollTimer = null; }
-  if (S.escHandler) { document.removeEventListener('keydown', S.escHandler); S.escHandler = null; }
+  if (S.keyHandler) { document.removeEventListener('keydown', S.keyHandler); S.keyHandler = null; }
+  // Remove our popstate listener BEFORE rewinding history so history.back()
+  // can't re-enter closeCockpit. If we were closed BY a popstate, the entry is
+  // already gone — don't rewind again.
+  if (S.popHandler) { window.removeEventListener('popstate', S.popHandler); S.popHandler = null; }
+  if (!opts.fromPop && S.pushedState) { try { history.back(); } catch { /* noop */ } }
+  S.pushedState = false;
+  const restore = S.prevFocus; S.prevFocus = null;
   const modal = document.getElementById('aios-cockpit-modal');
   if (modal) {
     const content = modal.querySelector('.modal-content');
@@ -917,6 +1050,11 @@ export function closeCockpit() {
       setTimeout(() => { if (modal.parentElement) modal.remove(); }, 250);
     } else { modal.remove(); }
   }
+  // Restore focus to the trigger (P3-T1) — fall back to the rail button.
+  try {
+    const tgt = (restore && restore.isConnected) ? restore : document.getElementById('rail-agents');
+    if (tgt && tgt.focus) tgt.focus();
+  } catch { /* noop */ }
 }
 
 export function isCockpitOpen() { return S.open; }
