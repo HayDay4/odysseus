@@ -769,6 +769,21 @@ async def serve_tasks(request: Request):
 async def serve_library(request: Request):
     return await serve_index(request)
 
+# Workshop cockpit deep-links — the SPA's app.js _routeOpen maps these paths to
+# openCockpit() and hydrates from ?project=&tab= (Phase 3). Without an explicit
+# route a cold-load 404s before the JS ever runs, so the bookmark would break.
+@app.get("/agents")
+async def serve_agents(request: Request):
+    return await serve_index(request)
+
+@app.get("/workshop")
+async def serve_workshop(request: Request):
+    return await serve_index(request)
+
+@app.get("/runs")
+async def serve_runs(request: Request):
+    return await serve_index(request)
+
 @app.get("/backgrounds")
 async def serve_backgrounds(request: Request):
     """Sandbox page for prototyping background effects. No auth required."""
